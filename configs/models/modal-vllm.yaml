@@ -1,0 +1,12 @@
+# An open-weight model served on Modal by deploy/modal_vllm.py (see deploy/README.md).
+# Fill in base_url after `modal deploy` (the printed URL + /v1) and the served model name.
+label: modal-qwen3-8b
+provider: openai_compatible
+base_url: https://YOUR-WORKSPACE--collusion-vllm-server.us-east.modal.direct/v1
+model: Qwen/Qwen3-8B
+api_key_env: MODAL_VLLM_API_KEY      # the key given to `modal secret create collusion-vllm`
+temperature: 0.7
+max_tokens: 1500                     # thinking models may need more (e.g. 4096)
+send_seed: true                      # vLLM honours per-call seeds
+timeout_s: 900                       # the first call after idle waits for a GPU to start
+# extra_body: {chat_template_kwargs: {enable_thinking: false}}   # Qwen3: thinking off

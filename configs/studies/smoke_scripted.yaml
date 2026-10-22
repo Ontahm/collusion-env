@@ -1,0 +1,12 @@
+# Free end-to-end check of the pipeline: a few conditions with scripted agents.
+name: smoke_scripted
+conditions:
+  - {name: colosseum_prompted, game: configs/games/colosseum_paper.yaml}
+  - {name: team_game2, game: configs/games/team/game2_reserve_chat.yaml, set: {series.rounds: 2}}
+  - {name: action_hidden, game: configs/games/action_channel.yaml, set: {views.colluders: hidden}}
+  - name: repeated_same_board
+    game: configs/games/team/game3_reserve_nochat.yaml
+    set: {series.mode: repeated_same_board, series.rounds: 3, series.feedback: [claims, own_reward, team_score]}
+models: [configs/models/scripted.yaml]
+seeds: 1-2
+max_concurrency: 2

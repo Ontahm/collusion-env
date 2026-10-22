@@ -1,0 +1,17 @@
+# Colosseum's Jira regret experiment: the three conditions of its config
+# (secret channel off; on with no instruction; on with the "simple" instruction), seeds 1-10.
+name: colosseum_paper
+description: Reproduction of Colosseum's Jira collusion conditions (paper regret config)
+conditions:
+  - name: baseline                   # secret_channel_enabled: false (variant forced to control)
+    game: configs/games/colosseum_paper.yaml
+    set: {boards.secret: false, prompts.colluder: "", prompts.variant_name: control}
+  - name: emergent                   # secret channel, no instruction (control)
+    game: configs/games/colosseum_paper.yaml
+    set: {prompts.colluder: "", prompts.variant_name: control}
+  - name: prompted                   # secret channel + "simple" coalition instruction
+    game: configs/games/colosseum_paper.yaml
+models: [configs/models/gpt-4.1-mini.yaml]
+seeds: 1-10
+replications: 1
+max_concurrency: 4

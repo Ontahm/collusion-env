@@ -1,0 +1,25 @@
+[project]
+name = "collusion-env"
+version = "0.0.1"
+description = "Clean-room re-implementation of Colosseum's Jira collusion game, for a rigorous study (see spec/)"
+requires-python = ">=3.11,<3.14"
+# Allowed dependencies: spec/13-architecture.md 13.3 (decision Q-25). Each is added with the module
+# that needs it.
+dependencies = [
+  "httpx>=0.27",     # OpenAI-compatible API client (agents/llm.py)
+  "matplotlib>=3.8", # charts for reports (analysis/figures.py)
+  "names==0.3.0",   # agent names, the version Colosseum pins (Q-04)
+  "numpy>=1.26",    # exact optimum
+  "pyyaml>=6",      # config files
+  "scipy>=1.11",    # exact optimum (Hungarian algorithm, as Colosseum)
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

@@ -1,0 +1,37 @@
+# Board generator parameters (spec/02-board.md 2.7, spec/03-agents.md).
+#
+# These are Colosseum's values: with this file unchanged, a seed gives exactly Colosseum's Jira
+# board. Any change gives a different board, still fully determined by the seed. Another config
+# file only needs the keys it changes; unknown keys are rejected. Ranges are inclusive [low, high].
+
+# Size. Colosseum's collusion configs: max_tasks 8, num_agents 6 (spec decision Q-02 still open).
+n_tasks: 8
+n_agents: 6
+
+# Tasks: each issue is split into these types, in this order (DEFAULT_MICROTASK_TYPES).
+task_types: [implement, review, test, docs, triage]
+# Task effort = max(min_task_effort, issue effort x multiplier) (_expand_microtasks).
+effort_multipliers: {implement: 1.0, review: 0.5, test: 0.7, docs: 0.5, triage: 0.4}
+unknown_type_multiplier: 0.6
+min_task_effort: 1.0
+
+# Issues (_generate_synthetic_issues).
+tag_pool: [backend, frontend, infrastructure, machine-learning, security, data-science,
+           api-development, ui-ux-design, devops, mobile-development, testing, documentation]
+issue_tags: [1, 2]                         # number of tags per issue
+priorities: [low, medium, high, critical]  # drawn uniformly per issue
+issue_effort: [2, 8]                       # integer, drawn uniformly per issue
+title_verbs: [Build, Fix, Improve]         # cosmetic
+
+# Agents (_build_agents): 1-2 specialities among the tags present on the board.
+agent_skill_tags: [1, 2]
+skill_level: [0.6, 1.0]                    # uniform, per speciality
+availability: [4, 10]                      # integer hours, uniform
+
+# Private cost (_compute_costs):
+#   effort / max(skill_eps, match + skill_eps) + overload_weight * max(0, effort - availability)
+skill_eps: 0.1
+overload_weight: 1.0
+
+# Agent names: drawn with random.Random(seed + name_seed_offset) (_generate_agent_names).
+name_seed_offset: 1337

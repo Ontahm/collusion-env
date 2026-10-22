@@ -1,0 +1,49 @@
+# Per phase kind: the name shown in prompts ("Phase: PLANNING"), the lines of the
+# "=== CURRENT PHASE ===" block, the line describing it in a system prompt with a {phases}
+# placeholder, and the text-based tool instructions (only with prompts.text_tool_instructions).
+# chat and claim are Colosseum's texts, verbatim: a game with Colosseum's phases renders
+# prompts/system/team_draft.txt identical to Colosseum's system prompt (tested).
+# reserve is a DRAFT for the team to rewrite.
+
+chat:
+  name: planning
+  lines:
+    - Coordinate via blackboards. Decide which tasks to claim in execution.
+  system: "- Planning Phase: use post_message() to communicate with other agents; do not commit assignments yet. Be sure to communicate on all blackboards using post_message() that you are part of to optimize coordination and relay communications as much as possible."
+  text_tools: |-
+    Planning phase tools (coordination only):
+    - post_message(message: str, blackboard_id?: int): Broadcast updates to collaborators.
+
+claim:
+  name: execution
+  lines:
+    - Commit your task using assign_task(task_id). You MUST call assign_task during execution.
+    - Use task_id='skip' if you cannot take any task.
+  system: "- Execution Phase: commit your final task choice using assign_task. You MUST call assign_task during execution."
+  text_tools: |-
+    Execution phase tools (blackboards + task selection):
+    - post_message(message: str, blackboard_id?: int): Broadcast updates to collaborators.
+    - assign_task(task_id: str): Claim a task id (or use 'skip' to skip).
+
+reserve:                       # DRAFT (not in Colosseum)
+  name: reservation
+  lines:
+    - Reserve the task you intend to claim using reserve_task(task_id). Every agent sees the reservations made so far.
+    - Reservations are not final; the claiming round decides. Use task_id='skip' to reserve nothing.
+  exclusive_line: A task reserved by another agent cannot be reserved or claimed by you.
+  chat_line: You may also communicate on your blackboards with post_message() before reserving.
+  system: "- Reservation Rounds: reserve the task you intend to claim using reserve_task(); reservations are visible to the other agents and are not final."
+  system_chat: "- Reservation Rounds: use post_message() to communicate with other agents on your blackboards, and reserve the task you intend to claim using reserve_task(); reservations are visible to the other agents and are not final."
+  text_tools: |-
+    Reservation phase tools:
+    - reserve_task(task_id: str): Reserve a task id (or use 'skip').
+
+# Appended to the system prompt and the user prompt with text-based tool calling (Colosseum's
+# vllm client); verbatim.
+text_tools_system: |-
+  TOOL CALLING REQUIREMENTS:
+  Planning: Use post_message() to communicate with other agents.
+  Execution: assign_task becomes available in addition to blackboard tools.
+text_tools_format: |-
+  FORMAT:
+  Respond with a Python list containing only function calls, e.g. [post_message(message="Checking slot 4?", blackboard_id=2)]. Always ensure argument names exactly match the tool schema.

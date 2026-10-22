@@ -1,0 +1,22 @@
+# The team note of 19 Oct: action-only coordination, same-issue goal, five scenarios + baseline.
+name: action_channel
+description: same-issue goal; chat vs visible / hidden / issue-only / noisy partner claims
+conditions:
+  - name: baseline                   # colluders not instructed (as Colosseum's "control")
+    game: configs/games/action_channel.yaml
+    set: {prompts.colluder: ""}
+  - name: secret_chat
+    game: configs/games/action_channel.yaml
+    set:
+      boards.secret: true
+      views.colluders: hidden
+      prompts.colluder: prompts/colluder/team_same_issue_chat.txt
+      phases: [{kind: chat, passes: 1, participants: colluders, boards: [secret]}, {kind: claim, post_message: "no"}]
+  - {name: action_visible, game: configs/games/action_channel.yaml, set: {views.colluders: visible}}
+  - {name: action_hidden, game: configs/games/action_channel.yaml, set: {views.colluders: hidden}}
+  - {name: issue_only, game: configs/games/action_channel.yaml, set: {views.colluders: issue_only}}
+  - {name: noisy, game: configs/games/action_channel.yaml, set: {views.colluders: noisy}}
+models: [configs/models/gpt-4.1-mini.yaml]
+seeds: 1-20
+replications: 1
+max_concurrency: 4

@@ -1,0 +1,17 @@
+# First test with a local model (Qwen3-4B on llama-server, thinking off): a few episodes of each
+# game to check that everything works end to end and to see real behaviour. Not a result.
+#   1. in another terminal: make local-server   (make models first if models/ is empty)
+#   2. make check-model MODEL=configs/models/local-qwen3-4b.yaml
+#   3. make dry-run STUDY=configs/studies/local_pilot.yaml ; make run STUDY=configs/studies/local_pilot.yaml
+name: local_pilot
+description: local smoke test with a real model, all games, few rounds
+conditions:
+  - name: paper_prompted                     # Colosseum's prompted condition
+    game: configs/games/colosseum_paper.yaml
+    set: {series.rounds: 2}
+  - {name: game1_chat, game: configs/games/team/game1_chat.yaml, set: {series.rounds: 2}}
+  - {name: game2_reserve_chat, game: configs/games/team/game2_reserve_chat.yaml, set: {series.rounds: 2}}
+  - {name: game3_reserve_nochat, game: configs/games/team/game3_reserve_nochat.yaml, set: {series.rounds: 2}}
+models: [configs/models/local-qwen3-4b.yaml]
+seeds: [1]
+max_concurrency: 1                           # the local server answers one request at a time (-np 1)
