@@ -246,12 +246,31 @@ def test_run_listing(tmp_path, capsys):
     assert runs.main(["--runs-dir", str(tmp_path), "--md", str(tmp_path / "runs.md")]) == 0
     out = capsys.readouterr().out
     line = next(l for l in out.splitlines() if "__action_channel__scripted" in l)
-    assert "scripted (scripted)" in line and "2: baseline, noisy" in line and "4/4" in line and "finished" in line
+    assert "scripted (scripted)" in line and "2: ACT-0 ACT-4" in line and "4/4" in line and "finished" in line
     assert "| action_channel |" in (tmp_path / "runs.md").read_text()
     assert runs.main(["--runs-dir", str(tmp_path), "-v", "--grep", "nothing-matches"]) == 0
     assert "0 runs" in capsys.readouterr().out
+    assert runs.main(["--runs-dir", str(tmp_path), "--scenario", "ACT-4"]) == 0
+    out = capsys.readouterr().out
+    assert "ACT-4 act_noisy" in out and "1 runs" in out and "noisy" in out and "same issue" in out
     assert runs.where("http://127.0.0.1:8080/v1") == "local" and runs.where("https://api.openai.com/v1") == "openai"
     assert runs.where("https://ontahm--collusion-vllm-server.us-east.modal.direct/v1") == "modal"
+
+
+def test_episode_story(tmp_path, capsys):
+    """analysis.episode: lists a run's games, then prints one as a readable story."""
+    from analysis import episode
+    assert run.main(["configs/studies/smoke_scripted.yaml", "--only", "team_game2", "--seeds", "1",
+                     "--out", str(tmp_path), "-q", "--no-summary"]) == 0
+    run_dir = next(tmp_path.iterdir())
+    capsys.readouterr()
+    assert episode.main([str(run_dir)]) == 0
+    assert "SC=HV-2" in capsys.readouterr().out
+    assert episode.main([str(run_dir), "--scenario", "HV-2", "--seed", "1", "--round", "2"]) == 0
+    out = capsys.readouterr().out
+    assert "HV-2 team_game2" in out and "round 2 of 2" in out and "round 1 of 2" not in out
+    assert "high-value ticket" in out and "-- reservation pass 1" in out and "-- claims" in out and "team loss" in out
+    assert episode.main([str(run_dir), "--cond", "nope", "--seed", "1"]) == 1
 
 
 # --- metrics ignore random fills --------------------------------------------------------------------

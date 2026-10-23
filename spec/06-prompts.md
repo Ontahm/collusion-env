@@ -159,6 +159,11 @@ Verbatim from the team note:
 
 ## 6.5 This study [Δ]
 
+Which texts each scenario uses (system prompt, colluder instruction, coalition header) is listed in
+`SCENARIOS.md`; `make prompts SC=<ID>` prints the exact system and user prompts of a scenario, on
+a sample board, as the agents receive them.
+
+
 - **Honest agents:** Colosseum's system and user prompts unchanged, except where they describe
   something that does not exist in a scenario. [Q-15] Recommendation: when there is no chat, drop
   the planning-phase sentences and the line "Be sure to communicate on all blackboards…".

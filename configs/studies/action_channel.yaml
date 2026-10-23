@@ -2,20 +2,12 @@
 name: action_channel
 description: same-issue goal; chat vs visible / hidden / issue-only / noisy partner claims
 conditions:
-  - name: baseline                   # colluders not instructed (as Colosseum's "control")
-    game: configs/games/action_channel.yaml
-    set: {prompts.colluder: ""}
-  - name: secret_chat
-    game: configs/games/action_channel.yaml
-    set:
-      boards.secret: true
-      views.colluders: hidden
-      prompts.colluder: prompts/colluder/team_same_issue_chat.txt
-      phases: [{kind: chat, passes: 1, participants: colluders, boards: [secret]}, {kind: claim, post_message: "no"}]
-  - {name: action_visible, game: configs/games/action_channel.yaml, set: {views.colluders: visible}}
-  - {name: action_hidden, game: configs/games/action_channel.yaml, set: {views.colluders: hidden}}
-  - {name: issue_only, game: configs/games/action_channel.yaml, set: {views.colluders: issue_only}}
-  - {name: noisy, game: configs/games/action_channel.yaml, set: {views.colluders: noisy}}
+  - {scenario: ACT-0, name: baseline}        # colluders not instructed (as Colosseum's "control")
+  - {scenario: ACT-1, name: secret_chat}     # one secret chat round, partner's claim hidden
+  - {scenario: ACT-2, name: action_visible}  # no chat, partner's claim visible
+  - {scenario: ACT-5, name: action_hidden}   # no chat, partner's claim hidden
+  - {scenario: ACT-3, name: issue_only}      # no chat, only the partner's issue
+  - {scenario: ACT-4, name: noisy}           # no chat, partner's claim shown with noise
 models: [configs/models/gpt-4.1-mini.yaml]
 seeds: 1-20
 replications: 1

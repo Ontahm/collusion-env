@@ -53,8 +53,11 @@ from metrics import index_row, round_metrics
 
 @dataclass(frozen=True)
 class ConditionConfig:
-    name: str
-    game: str
+    """A condition of a study: a scenario of configs/scenarios.yaml by ID (its rules are fixed; `set`
+    may change only the run size), or, for ad-hoc tests, a game file plus overrides."""
+    scenario: Optional[str] = None
+    name: str = ""                               # default: the scenario's name
+    game: str = ""
     set: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -161,6 +164,7 @@ class Job:
     model: ModelConfig
     seed: int
     replication: int
+    scenario: Optional[str] = None             # its ID in configs/scenarios.yaml, if any
 
     @property
     def folder(self) -> str:
@@ -184,7 +188,8 @@ def plan(study: StudyConfig, only=None, models=None, seeds=None, replications=No
         if unknown:
             raise ValueError(f"--models: unknown labels {unknown}; this study has {[m.label for m in model_cfgs]}")
         model_cfgs = [m for m in model_cfgs if m.label in models]
-    names = [c.name for c in study.conditions]
+    resolved = [resolve_condition(c) for c in study.conditions]
+    names = [r[0] for r in resolved]
     if len(set(names)) != len(names):
         raise ValueError(f"study {study.name!r}: two conditions share a name: {names}")
     if only:
@@ -192,15 +197,31 @@ def plan(study: StudyConfig, only=None, models=None, seeds=None, replications=No
         if unknown:
             raise ValueError(f"--only: unknown conditions {unknown}; this study has {names}")
     jobs = []
-    for cond in study.conditions:
-        if only and cond.name not in only:
+    for name, game, sid in resolved:
+        if only and name not in only:
             continue
-        game = load_game(cond.game, cond.set)
         for model in model_cfgs:
             for seed in (seeds or parse_seeds(study.seeds)):
                 for rep in range(replications if replications is not None else study.replications):
-                    jobs.append(Job(cond.name, game, model, seed, rep))
+                    jobs.append(Job(name, game, model, seed, rep, sid))
     return jobs
+
+
+def resolve_condition(cond: ConditionConfig) -> Tuple[str, GameConfig, Optional[str]]:
+    """(name, game, scenario ID). A scenario reference takes its rules from the catalogue; a game
+    file is recognised as a scenario when its rules match one."""
+    import scenarios
+    if cond.scenario:
+        sc = scenarios.get(cond.scenario)
+        if cond.game:
+            raise ValueError(f"condition {cond.scenario}: give a scenario or a game, not both")
+        size = scenarios.split_set(cond.set)
+        game = load_game(sc.game, {**dict(sc.set), **size})
+        return cond.name or sc.name, game, sc.id
+    if not cond.game or not cond.name:
+        raise ValueError("a condition needs `scenario: <ID>` (configs/scenarios.yaml), or `name` and `game`")
+    game = load_game(cond.game, cond.set)
+    return cond.name, game, scenarios.identify(to_plain(game))
 
 
 def board_seed_overlaps(jobs: List[Job]) -> List[str]:
@@ -263,7 +284,7 @@ def describe(jobs: List[Job]) -> str:
     lines = [f"{len(jobs)} episodes"]
     by: Dict[Tuple[str, str], List[Job]] = {}
     for j in jobs:
-        by.setdefault((j.condition, j.model.label), []).append(j)
+        by.setdefault((f"{j.scenario} {j.condition}" if j.scenario else j.condition, j.model.label), []).append(j)
     calls_total = 0
     for (cond, model), js in by.items():
         g = js[0].game
@@ -349,7 +370,7 @@ async def run_job(job: Job, run_dir: Path, clients: Dict[str, ChatClient], index
                 status, error = "failed", error or f"metrics failed: {exc}"
                 continue
         rounds.append({**plain_round(record), "metrics": to_plain(m)})
-        row = index_row(job.condition, job.model.label, job.seed, job.replication, record, m)
+        row = {"scenario": job.scenario or "", **index_row(job.condition, job.model.label, job.seed, job.replication, record, m)}
         row["cost_usd"] = cost(job.model, row["prompt_tokens"], row["completion_tokens"])
         rows.append(row)
     (folder / "episode.json").write_text(json.dumps({"status": status, "error": error, "condition": job.condition,
@@ -534,7 +555,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     log.plan(f"run folder: {run_dir}")
     if not (run_dir / "study.json").exists():
         (run_dir / "study.json").write_text(json.dumps({"source": str(args.study), "study": to_plain(study),
-                                                        "args": vars(args)}, indent=1))
+                                                        "args": vars(args),
+                                                        "scenarios": {j.condition: j.scenario for j in jobs}}, indent=1))
         local = any(j.model.provider != "scripted" and is_local(j.model) for j in jobs)
         (run_dir / "provenance.json").write_text(json.dumps(provenance(local), indent=1))
     try:
@@ -556,8 +578,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             log.summary(f"summary and charts: {run_dir / 'summary.md'}, {run_dir / 'figures'}")
         except Exception as exc:
             log.error(f"summary failed ({type(exc).__name__}: {exc}); run: python -m analysis.summarize {run_dir}")
+    not_run, failed = counts.get("not run (model unusable)", 0), counts.get("failed", 0)
+    if not_run or failed:
+        log.error(f"{not_run} episodes not run, {failed} failed (exit code 3). Finished episodes are kept: fix the cause "
+                  f"(e.g. start the model's server), then continue with: python -m run {args.study} --resume {run_dir}")
     log.close()
-    return 0 if not (counts.get("failed") or counts.get("not run (model unusable)")) else 3
+    return 0 if not (failed or not_run) else 3
 
 
 if __name__ == "__main__":

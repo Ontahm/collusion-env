@@ -1,6 +1,6 @@
 # collusion-env commands. Run inside `nix develop` (or any shell with Python 3.11+ and uv).
 .DEFAULT_GOAL := help
-.PHONY: help setup test smoke models local-server local-server-abliterated check-model dry-run run summarize runs board-study check-env
+.PHONY: help setup test smoke models local-server local-server-abliterated check-model dry-run run summarize runs episode scenarios prompts board-study check-env
 
 # Python with the libraries prebuilt wheels need on NixOS (empty elsewhere).
 PY := LD_LIBRARY_PATH="$${ENV_PY_LD_LIBRARY_PATH:-}" uv run --locked python
@@ -67,8 +67,17 @@ run: check-env ## Run STUDY (LOG=quiet|normal|verbose|debug; asks before calling
 summarize: check-env ## Summarise a run: make summarize RUN=runs/<run dir>
 	$(PY) -m analysis.summarize $(RUN)
 
-runs: check-env ## List the runs: study, model and where it ran, conditions, progress, time (ARGS='-v', '--grep modal')
-	$(PY) -m analysis.runs $(ARGS)
+runs: check-env ## List the runs (SC=<scenario>: every run of one scenario, with its results; ARGS='-v', '--grep modal')
+	$(PY) -m analysis.runs $(if $(SC),--scenario $(SC),) $(ARGS)
+
+episode: check-env ## Read one game as a story: make episode RUN=runs/<run> SC=<scenario> SEED=<k> (or COND=; without them: list the games)
+	$(PY) -m analysis.episode $(RUN) $(if $(SC),--scenario $(SC),) $(if $(COND),--cond $(COND),) $(if $(SEED),--seed $(SEED),) $(ARGS)
+
+scenarios: check-env ## The scenario table (configs/scenarios.yaml): print it and regenerate SCENARIOS.md
+	$(PY) -m scenarios
+
+prompts: check-env ## The exact prompts of a scenario, on a sample board: make prompts SC=HV-2 [SEED=3]
+	$(PY) -m scenarios --prompts $(SC) $(if $(SEED),--seed $(SEED),)
 
 board-study: check-env ## Model-free board study (BOARD_STUDY=configs/board_study.yaml)
 	$(PY) -m analysis.board_study $(BOARD_STUDY) $(ARGS)

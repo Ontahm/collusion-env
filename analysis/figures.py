@@ -215,7 +215,7 @@ OUTCOME_COLOURS = {"colluder_alone": PALETTE[0], "colluders_collide": PALETTE[1]
 
 def run_figures(run_dir: Path, rows: Optional[List[dict]] = None) -> List[Path]:
     """Charts of a run. `rows`: index rows with the outcome columns (analysis.summarize.load)."""
-    from analysis.summarize import condition_order, load
+    from analysis.summarize import condition_order, load, shown
     style()
     rows = load(run_dir) if rows is None else rows
     if not rows:
@@ -224,7 +224,7 @@ def run_figures(run_dir: Path, rows: Optional[List[dict]] = None) -> List[Path]:
     order = condition_order(run_dir)
     groups: Dict[Tuple[str, str], List[dict]] = defaultdict(list)
     for r in sorted(rows, key=lambda r: (order.get(r["condition"], len(order)), r["condition"], r["model"])):
-        groups[(r["condition"], r["model"])].append(r)
+        groups[(shown(r), r["model"])].append(r)
     paths: List[Path] = []
 
     def keep(fig, name):
@@ -378,6 +378,8 @@ def _by_round(groups: Dict[Tuple[str, str], List[dict]], key: str, label: str) -
 def _reservation_signals(run_dir: Path) -> Dict[Tuple[str, str], Dict[str, list]]:
     """(condition, pass k, model) -> the colluders' same-issue and high-value reservation flags."""
     from analysis.summarize import condition_order
+    from scenarios import label, run_scenarios
+    ids = run_scenarios(run_dir)
     acc: Dict[Tuple[str, int, str], Dict[str, list]] = {}
     for ep in run_dir.glob("episodes/**/episode.json"):
         data = json.loads(ep.read_text())
@@ -396,7 +398,7 @@ def _reservation_signals(run_dir: Path) -> Dict[Tuple[str, str], Dict[str, list]
                     cell["hv"].append(hv[i])
     order = condition_order(run_dir)
     keys = sorted(acc, key=lambda k: (order.get(k[0], len(order)), k))
-    return {(f"{c}, pass {i + 1}", m): acc[(c, i, m)] for c, i, m in keys}
+    return {(f"{label(c, ids.get(c))}, pass {i + 1}", m): acc[(c, i, m)] for c, i, m in keys}
 
 
 # --- board study charts --------------------------------------------------------------------------------

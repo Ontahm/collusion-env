@@ -2,7 +2,8 @@
 
     python -m analysis.runs                 # one line per run, oldest first (also: make runs)
     python -m analysis.runs -v              # + per run: description, models, conditions, episodes
-    python -m analysis.runs --grep modal    # only runs whose study, model or condition matches
+    python -m analysis.runs --grep modal    # only runs whose study, model, condition or scenario matches
+    python -m analysis.runs --scenario ACT-1   # every run that played scenario ACT-1, with its results
     python -m analysis.runs --md runs.md    # the same table as Markdown, e.g. to share
 
 Everything is read from what a run writes (study.json, run.log, episodes/, index.csv); nothing is
@@ -34,6 +35,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from env.configio import ROOT, resolve_path
+from scenarios import run_scenarios
 
 RECENT_S = 300
 _STATUS = re.compile(rb'"status":\s*"([^"]+)"')
@@ -137,7 +139,10 @@ def describe_run(run_dir: Path) -> Optional[Dict[str, Any]]:
         start = datetime.strptime(run_dir.name[:15], "%Y%m%d-%H%M%S")
     except ValueError:
         start = datetime.fromtimestamp((run_dir / "study.json").stat().st_mtime)
-    conditions = [c["name"] for c in study.get("conditions", [])]
+    ids = run_scenarios(run_dir)
+    conditions = [c.get("name") or c.get("scenario") for c in study.get("conditions", [])]
+    if ids and not all(c in ids for c in conditions):        # names defaulted from the scenario
+        conditions = list(ids)
     if args.get("only"):
         conditions = [c for c in conditions if c in args["only"].split(",")]
     models = _models(study, args)
@@ -188,6 +193,7 @@ def describe_run(run_dir: Path) -> Optional[Dict[str, Any]]:
             "planned": planned, "complete": complete, "failed": failed, "rounds": rounds,
             "seconds": seconds, "tokens_in": tok_in, "tokens_out": tok_out, "cost": cost, "state": state,
             "per_cell": per_cell, "use_model": args.get("use_model"), "summary": (run_dir / "summary.md").exists(),
+            "ids": {c: ids.get(c) for c in conditions},
             "git": _git(run_dir)}
 
 
@@ -210,7 +216,7 @@ def _seed_text(seeds: List[int]) -> str:
 def row(d: Dict[str, Any]) -> List[str]:
     """Terminal row: the run folder already says when and which study."""
     models = ", ".join(f"{m['label']} ({m['where']})" for m in d["models"]) or "?"
-    conds = f"{len(d['conditions'])}: " + ", ".join(d["conditions"])
+    conds = f"{len(d['conditions'])}: " + " ".join(d["ids"].get(c) or c for c in d["conditions"])
     return [d["run"], models, conds, _seed_text(d["seeds"]), f"{d['complete']}/{d['planned']}", str(d["rounds"]),
             _dur(d["seconds"]), f"{_tokens(d['tokens_in'])}/{_tokens(d['tokens_out'])}", d["state"]]
 
@@ -256,8 +262,39 @@ def details(d: Dict[str, Any]) -> List[str]:
     per_cond = len(d["seeds"]) * d["replications"]
     for c in d["conditions"]:
         cells = ", ".join(f"{m['label']} {d['per_cell'].get((c, m['label']), 0)}/{per_cond}" for m in d["models"])
-        lines.append(f"    {c:28s} {cells}")
+        shown = f"{d['ids'].get(c)} {c}" if d["ids"].get(c) else c
+        lines.append(f"    {shown:36s} {cells}")
     return [l for l in lines if l]
+
+
+def scenario_view(sid: str, runs: List[Dict[str, Any]], runs_dir: Path) -> int:
+    """Every run that played one scenario, with the measures of its goal, side by side."""
+    import scenarios
+    from analysis.summarize import load, main_columns, summarize_rows
+    try:
+        sc = scenarios.get(sid)
+    except ValueError as exc:
+        print(exc)
+        return 2
+    print(f"{sc.id} {sc.name}: {sc.title}\n  tests: {sc.tests}\n")
+    print(f"{len(runs)} runs in {runs_dir} played it")
+    rows, head = [], None
+    for d in runs:
+        data = [r for r in load(Path(d["path"])) if r.get("scenario") == sid] if Path(d["path"], "index.csv").exists() else []
+        by_model: Dict[str, List[Dict[str, str]]] = {}
+        for r in data:
+            by_model.setdefault(r["model"], []).append(r)
+        for model, rs in by_model.items():
+            objective = rs[0].get("objective") or "coalition_reward"
+            cols = main_columns(objective)
+            s = summarize_rows(rs)
+            head = ["run", "condition", "model", "rounds"] + [c for c, _ in cols] + ["duplicates / round"]
+            rows.append([d["run"], rs[0]["condition"], model, str(s["rounds"])] + [fn(s) for _, fn in cols]
+                        + [f"{s.get('duplicate_claims', 0):.2f}"])
+    if rows:
+        print("\n".join(_table(head, rows)))
+    print("\nOne game: make episode RUN=runs/<run> SC=" + sid + " SEED=<k>")
+    return 0
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -265,6 +302,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--runs-dir", default=os.environ.get("COLLUSION_RUNS_DIR") or str(ROOT / "runs"))
     parser.add_argument("-v", "--verbose", action="store_true", help="details per run")
     parser.add_argument("--grep", help="keep runs whose study, run folder, model or condition contains this text")
+    parser.add_argument("--scenario", help="only runs that played this scenario (configs/scenarios.yaml), with its results")
     parser.add_argument("--md", help="also write the table as Markdown to this file")
     args = parser.parse_args(argv)
     runs_dir = Path(args.runs_dir)
@@ -273,8 +311,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     runs = [d for d in found if d]
     if args.grep:
         g = args.grep.lower()
-        runs = [d for d in runs if g in " ".join([d["study"], d["run"], *d["conditions"],
+        runs = [d for d in runs if g in " ".join([d["study"], d["run"], *d["conditions"], *(i or "" for i in d["ids"].values()),
                                                  *(m["label"] + " " + m["where"] for m in d["models"])]).lower()]
+    if args.scenario:
+        return scenario_view(args.scenario, [d for d in runs if args.scenario in d["ids"].values()], runs_dir)
     rows = [row(d) for d in runs]
     print(f"{len(runs)} runs in {runs_dir}")
     if args.verbose:

@@ -27,6 +27,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from analysis.stats import mean, wilson
 from outcomes import HV_OUTCOMES, from_episode_round
+from scenarios import label as scenario_label, run_scenarios
 
 RATES = ("same_issue_match", "collusive_match", "hv_captured_by_coalition", "hv_captured_by_honest",
          "hv_clean_capture", "colluders_name_hv")
@@ -63,7 +64,16 @@ def load(run_dir: Path) -> List[Dict[str, str]]:
         for r in rows:
             extra = derived.get((r["condition"], r["model"], r["seed"], r["replication"], r["round"]), {})
             r.update({k: "" if v is None else str(v) for k, v in extra.items()})
+    if rows and not all(r.get("scenario") for r in rows):          # runs made before scenario IDs
+        ids = run_scenarios(run_dir)
+        for r in rows:
+            r["scenario"] = r.get("scenario") or ids.get(r["condition"]) or ""
     return rows
+
+
+def shown(r: Dict[str, str]) -> str:
+    """A condition as tables and charts show it: 'ACT-1 secret_chat'."""
+    return scenario_label(r["condition"], r.get("scenario") or None)
 
 
 def derive_outcomes(run_dir: Path) -> Dict[Tuple[str, ...], Dict[str, Any]]:
@@ -183,9 +193,16 @@ def table(keys: Sequence[str], columns: Sequence[Column], rows: Sequence[Tuple[S
 
 
 def condition_order(run_dir: Path) -> Dict[str, int]:
+    """Row order: by scenario ID (catalogue order: PAPER-0, ..., ACT-0, ACT-1, ...) when every
+    condition has one, else the study file's order."""
+    from scenarios import catalogue
+    ids = run_scenarios(run_dir)
+    known = list(catalogue())
+    if ids and all(i in known for i in ids.values()):
+        return {c: known.index(i) for c, i in ids.items()}
     try:
         study = json.loads((run_dir / "study.json").read_text())["study"]
-        return {c["name"]: i for i, c in enumerate(study["conditions"])}
+        return {(c.get("name") or c.get("scenario")): i for i, c in enumerate(study["conditions"])}
     except (OSError, KeyError, TypeError, ValueError):
         return {}
 
@@ -196,7 +213,7 @@ def summarize_run(run_dir: Path, figures: bool = True) -> List[str]:
     order = condition_order(run_dir)
     groups: Dict[Tuple[str, str], List[Dict[str, str]]] = defaultdict(list)
     for r in sorted(rows, key=lambda r: (order.get(r["condition"], len(order)), r["condition"], r["model"])):
-        groups[(r["condition"], r["model"])].append(r)
+        groups[(shown(r), r["model"])].append(r)
     by_objective: Dict[str, Dict[Tuple[str, str], List[Dict[str, str]]]] = defaultdict(dict)
     for g, rs in groups.items():
         by_objective[rs[0].get("objective") or "coalition_reward"][g] = rs
@@ -256,10 +273,11 @@ def summarize_run(run_dir: Path, figures: bool = True) -> List[str]:
     (run_dir / "summary.md").write_text("\n".join(lines) + "\n")
     flat = []
     for (cond, model), s in stats.items():
-        flat.append({"condition": cond, "model": model, "split": "all",
+        sid = groups[(cond, model)][0].get("scenario", "")
+        flat.append({"scenario": sid, "condition": groups[(cond, model)][0]["condition"], "model": model, "split": "all",
                      **{k: (v["rate"] if isinstance(v, dict) else v) for k, v in s.items()}})
     with (run_dir / "summary.csv").open("w", newline="") as f:
-        keys = ["condition", "model", "split"] + sorted({k for row in flat for k in row} - {"condition", "model", "split"})
+        keys = ["scenario", "condition", "model", "split"] + sorted({k for row in flat for k in row} - {"scenario", "condition", "model", "split"})
         writer = csv.DictWriter(f, fieldnames=keys)
         writer.writeheader()
         writer.writerows(flat)
