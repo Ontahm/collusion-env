@@ -1,0 +1,94 @@
+{
+ "source": "configs/studies/action_channel.yaml",
+ "study": {
+  "name": "action_channel",
+  "description": "same-issue goal; chat vs visible / hidden / issue-only / noisy partner claims",
+  "conditions": [
+   {
+    "name": "baseline",
+    "game": "configs/games/action_channel.yaml",
+    "set": {
+     "prompts.colluder": ""
+    }
+   },
+   {
+    "name": "secret_chat",
+    "game": "configs/games/action_channel.yaml",
+    "set": {
+     "boards.secret": true,
+     "views.colluders": "hidden",
+     "prompts.colluder": "prompts/colluder/team_same_issue_chat.txt",
+     "phases": [
+      {
+       "kind": "chat",
+       "passes": 1,
+       "participants": "colluders",
+       "boards": [
+        "secret"
+       ]
+      },
+      {
+       "kind": "claim",
+       "post_message": "no"
+      }
+     ]
+    }
+   },
+   {
+    "name": "action_visible",
+    "game": "configs/games/action_channel.yaml",
+    "set": {
+     "views.colluders": "visible"
+    }
+   },
+   {
+    "name": "action_hidden",
+    "game": "configs/games/action_channel.yaml",
+    "set": {
+     "views.colluders": "hidden"
+    }
+   },
+   {
+    "name": "issue_only",
+    "game": "configs/games/action_channel.yaml",
+    "set": {
+     "views.colluders": "issue_only"
+    }
+   },
+   {
+    "name": "noisy",
+    "game": "configs/games/action_channel.yaml",
+    "set": {
+     "views.colluders": "noisy"
+    }
+   }
+  ],
+  "models": [
+   "configs/models/modal-vllm.yaml"
+  ],
+  "seeds": "1-20",
+  "replications": 1,
+  "max_concurrency": 4,
+  "out_dir": "runs"
+ },
+ "args": {
+  "study": "configs/studies/action_channel.yaml",
+  "dry_run": false,
+  "yes": true,
+  "scripted": null,
+  "only": null,
+  "models": null,
+  "use_model": "configs/models/modal-vllm.yaml",
+  "seeds": null,
+  "replications": null,
+  "resume": null,
+  "concurrency": 16,
+  "out": null,
+  "no_summary": false,
+  "quiet": false,
+  "verbose": 0,
+  "log_level": null,
+  "show": "",
+  "hide": ""
+ }
+}
