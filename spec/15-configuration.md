@@ -218,6 +218,7 @@ shell win, and command-line options win over both.
 | `construction.fallback_margin` | 2 | honest agents are this much worse than the colluders on the colluders' fallback tasks |
 | `construction.jitter` | 3 | capped values are lowered by a seeded amount in [0, jitter], so planted costs are not flat |
 | `construction.max_redraws` | 30 | boards that cannot meet the targets are replaced by a new board from a derived seed |
+| `construction.t_choice` | `random` | `random`: T is drawn among the tasks every round (seeded), so its name, issue, type and list position vary (agents cannot learn "T is always the triage task"); `most_valuable`: the task worth most to its best honest fit (lands on 2 tasks ~95% of the time) |
 
 Targets: team loss ≥ `team_conflict`, fit value ≥ `cost_gap`, pair gain ≥ `cost_gap` + `pair_margin`, and the team's best plan gives T to N.
 
