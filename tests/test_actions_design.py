@@ -144,12 +144,13 @@ def test_planted_board_meets_its_targets():
         for c in s.roles.colluders:                                        # T is each colluder's best task
             assert max(b.tasks, key=lambda t: value(c, t.id)).id == T
         assert value(p["better_colluder"], T) > value(p["worse_colluder"], T)
-        if p["targets_met"]:
-            met += 1
-            assert p["price_of_collusion"] >= 8.0 - 0.01                    # team_conflict
-            assert p["fit_value"] >= 4.0 - 0.01                             # cost_gap
-            assert p["team_optimum_t_holder"] == p["team_best_fit"]
-    assert met >= 34                                                        # ~92% over 300 seeds
+        assert p["targets_met"]                                             # redraws make every round meet them
+        met += 1
+        assert p["price_of_collusion"] >= 8.0 - 0.01                        # team_conflict
+        assert p["fit_value"] >= 4.0 - 0.01                                 # cost_gap
+        assert p["max_pair_gain"] >= 7.0 - 0.01                             # cost_gap + pair_margin
+        assert p["team_optimum_t_holder"] == p["team_best_fit"]
+    assert met == 40
 
 
 def test_planted_keeps_tasks_agents_and_the_best_fit_on_t():

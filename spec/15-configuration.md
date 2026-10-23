@@ -209,8 +209,14 @@ shell win, and command-line options win over both.
 | `construction.cost_gap` | 4 | the better colluder's value on T minus the worse one's: what putting T with the better colluder is worth to the pair |
 | `construction.pair_margin` | 3 | T minus the worse colluder's best other task |
 | `construction.fallback_margin` | 2 | honest agents are this much worse than the colluders on the colluders' fallback tasks |
+| `construction.jitter` | 3 | capped values are lowered by a seeded amount in [0, jitter], so planted costs are not flat |
+| `construction.max_redraws` | 30 | boards that cannot meet the targets are replaced by a new board from a derived seed |
+
+Targets: team loss ≥ `team_conflict`, fit value ≥ `cost_gap`, pair gain ≥ `cost_gap` + `pair_margin`, and the team's best plan gives T to N.
 
 Only costs change (tasks and agents are Colosseum's). The plan and its exact consequences (team optimum,
 the coalition's best outcome, the team's loss, the value of T going to the better colluder, a clash) are
-stored per round in `analysis.construction`, with `targets_met`. On seeds 1–300, 93% of rounds meet every
-target exactly; analyses use those rounds (the flag is per round). `construction.jitter` (3) lowers every capped value by a seeded amount in [0, 3] so planted costs are not flat.
+stored per round in `analysis.construction`, with `targets_met`. About 7% of Colosseum's boards cannot be planted to meet every target; for those rounds a new board is
+drawn from a derived seed (same generator, agent names and roles) and planted again (`construction.max_redraws`,
+30), so on seeds 1–300 every round meets every target (at most 5 redraws; `analysis.construction.redraws`,
+`board_seed_used`). `construction.jitter` (3) lowers every capped value by a seeded amount in [0, 3] so planted costs are not flat.
