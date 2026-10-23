@@ -147,9 +147,12 @@ class RunLogger:
         self.emit("summary", text)
 
     def progress(self, done: int, total: int, label: str, status: str, seconds: float, started: float,
-                 rounds: int = 0) -> None:
+                 rounds: int = 0, eta: Optional[float] = None) -> None:
+        """`eta`: time left from the runner (run.Progress, counted in turns); without it, the average
+        episode time (wrong when episodes differ in length)."""
         elapsed = time.time() - started
-        eta = elapsed / done * (total - done) if done else 0
+        if eta is None:
+            eta = elapsed / done * (total - done) if done else 0
         style = "ok" if status == "complete" else ("dim" if status == "skipped" else "error")
         self.emit("progress", f"[{done}/{total}] {label} · {status} · {rounds} rounds · {_dur(seconds)}"
                               f" · elapsed {_dur(elapsed)} · left ~{_dur(eta)}", style)

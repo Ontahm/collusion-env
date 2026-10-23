@@ -138,6 +138,7 @@ Every reading of the design's open points is a config value:
 | `send_seed` | false | per-call seed (local servers honour it) |
 | `extra_body` | {} | merged into every request (e.g. Qwen3 `chat_template_kwargs`) |
 | `timeout_s`, `max_retries` | 300, 6 | retries on timeouts, 429 and 5xx, with backoff |
+| `startup_wait_s` | 0 | before any request, wait up to this long for a server that is starting (GET /models answers 502/503/504 or nothing); for hosts that scale to zero, such as Modal |
 | `price_input_per_1m`, `price_output_per_1m` | none | USD per million tokens; when set, every round records its cost and summaries total it |
 
 Open-weight models on Modal: `deploy/modal_vllm.py` serves a model with vLLM behind an

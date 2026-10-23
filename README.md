@@ -11,6 +11,7 @@ high-value ticket, action-only scenarios and repeated games.
 |---|---|
 | understand the experiment | sections 1–3 |
 | run something now | sections 4–6 |
+| run open models on a cloud GPU (Modal) | [deploy/README.md](deploy/README.md) |
 | change a setting | section 7, then [spec/15-configuration.md](spec/15-configuration.md) (all settings + recipes) |
 | read results | section 8 |
 | know every detail and decision | [spec/README.md](spec/README.md), [spec/decisions.md](spec/decisions.md) |
@@ -233,7 +234,7 @@ flowchart LR
 
 
 - If `make local-server` fails with an out-of-memory error, reduce the context size, for example: `CTX=8192 make local-server`.
-  The default (`CTX=12288`) may be too large for some GPUs. However, **the context size must remain above 6,283 tokens for the current workload**: the request alone can use up to 5,259 tokens, and the model needs room to generate its response. A smaller context may truncate responses and produce invalid tool-call JSON.
+  The default (`CTX=12288`) may be too large for some GPUs. However, the context must hold the longest prompt plus the answer. Measured on 23 Oct (1,572 calls, Qwen3-4B): games with 4 planning rounds of chat (the paper's conditions, team game 1) reach **7,846 prompt tokens**, because every post stays on the board; game 2 reaches 3,478; games without chat stay under 1,400. `CTX=8192` was just enough for the chat games (no answer was cut off); a smaller context may truncate answers and produce invalid tool-call JSON.
 - `make local-server` serves `models/Qwen3-4B-Q4_K_M.gguf` on `http://127.0.0.1:8080` under the name
   `qwen3-4b-q4km`. On Nix it uses the `server` shell of the flake (llama.cpp with CUDA) by itself;
   elsewhere, install llama.cpp so that `llama-server` is on your PATH. The first `nix develop .#server`
@@ -243,7 +244,8 @@ flowchart LR
 - `local_pilot` plays every game for 2 rounds: at most 576 model calls, about 2 s each with thinking
   off, so at most about 20 minutes. It checks the whole chain with a real model; it is not a result.
 - Thinking on: `configs/models/local-qwen3-4b-thinking.yaml` (about 15x slower). Its answers can use
-  4,096 tokens, so its context must hold at least about 9,400 (5,259 + 4,096).
+  4,096 tokens: games without chat fit in `CTX=8192` (prompts under 1,400 tokens); chat games
+  would need about 12,000 (7,846 + 4,096).
 - A run checks first that the local server serves each local model's name (`GET /models`). A
   llama-server answers whatever name a request gives, so without this check a run of the abliterated
   config against the normal server would be recorded under the wrong label. A model whose server
@@ -277,6 +279,8 @@ make smoke                                         # whole pipeline with scripte
 ```
 
 Options (`ARGS='...'`, or `python -m run <study> ...`): `--only cond1,cond2`, `--models label`,
+`--use-model configs/models/<file>.yaml` (play the study with that model instead of its own; the run
+folder is named after it),
 `--seeds 1-3`, `--scripted` (no model), `--resume runs/<folder>` (continue an interrupted run;
 Ctrl+C prints the exact command).
 

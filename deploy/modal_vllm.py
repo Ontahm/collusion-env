@@ -21,7 +21,8 @@ environment when you deploy and baked into the image:
     MAX_MODEL_LEN     context length                              (default 16384)
     REGION            routing region                              (default us-east)
 
-The endpoint requires the bearer key stored in the `collusion-vllm` Modal secret (vLLM's --api-key);
+The endpoint requires the bearer key stored in the `collusion-vllm` Modal secret (read by vLLM from
+the VLLM_API_KEY environment variable, so it never appears in the logged arguments);
 put the same key in .env as MODAL_VLLM_API_KEY. The server scales to zero after 15 idle minutes.
 """
 
@@ -76,11 +77,13 @@ class Server:
                "--served-model-name", os.environ["SERVE_NAME"],
                "--host", "0.0.0.0", "--port", str(PORT),
                "--max-model-len", os.environ["SERVE_MAX_MODEL_LEN"],
-               "--api-key", os.environ["VLLM_API_KEY"],
                "--enable-auto-tool-choice", "--tool-call-parser", os.environ["SERVE_TOOL_PARSER"]]
         if os.environ.get("SERVE_REASONING_PARSER"):
             cmd += ["--reasoning-parser", os.environ["SERVE_REASONING_PARSER"]]
-        print(*[c if c != os.environ["VLLM_API_KEY"] else "<key>" for c in cmd])
+        # The key reaches vLLM through the VLLM_API_KEY environment variable (the Modal secret), never
+        # as --api-key: vLLM prints its command-line arguments, key included, to the logs.
+        assert os.environ.get("VLLM_API_KEY"), "the collusion-vllm secret must define VLLM_API_KEY"
+        print(*cmd)
         self.process = subprocess.Popen(cmd)
 
     @modal.exit()

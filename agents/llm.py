@@ -49,6 +49,7 @@ class ModelConfig:
     extra_body: Mapping[str, Any] = field(default_factory=dict)   # merged into every request
     timeout_s: float = 300.0
     max_retries: int = 6
+    startup_wait_s: float = 0.0                # wait this long for a server that is starting (scale-to-zero hosts)
     price_input_per_1m: Optional[float] = None     # USD per million tokens, for cost estimates
     price_output_per_1m: Optional[float] = None
     policy: str = "greedy"                     # scripted agents only (agents/scripted.py)
@@ -72,6 +73,28 @@ class ChatClient:
 
     async def close(self) -> None:
         await self.http.aclose()
+
+    async def wait_until_ready(self, on_wait: Optional[Callable[[float], None]] = None,
+                               poll_s: float = 10.0) -> Optional[str]:
+        """Poll GET /models while the server is starting (502/503/504 or no connection), for up to
+        `startup_wait_s`. A host that scales to zero (Modal) refuses requests until the model is
+        loaded, which takes minutes after an idle period. Returns None once the server answers with
+        anything else (even an error: it is up), or the last problem when the wait runs out."""
+        deadline = time.time() + self.config.startup_wait_s
+        started = time.time()
+        while True:
+            try:
+                r = await self.http.get("/models", timeout=30)
+                if r.status_code not in (502, 503, 504):
+                    return None
+                problem = f"HTTP {r.status_code}: {r.text[:200]}"
+            except (httpx.TimeoutException, httpx.TransportError) as exc:
+                problem = f"{type(exc).__name__}: {exc}"
+            if time.time() + poll_s > deadline:
+                return problem
+            if on_wait:
+                on_wait(time.time() - started)
+            await asyncio.sleep(poll_s)
 
     async def complete(self, messages: List[Dict[str, Any]], tools: List[Dict[str, Any]],
                        seed: Optional[int] = None) -> Dict[str, Any]:

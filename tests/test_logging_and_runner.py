@@ -178,6 +178,65 @@ def test_resume_with_another_server_skips_finished_episodes(tmp_path, capsys):
     assert len(list(run_dir.glob("episodes/g2/b/*/episode.json"))) == 2
 
 
+def test_waits_for_a_starting_server():
+    """A scale-to-zero host answers 503 until the model is loaded: wait, then go; give up after startup_wait_s."""
+    import asyncio
+    from agents.llm import ChatClient, ModelConfig
+    server, _ = fake_llm.start(starting_polls=3)
+    try:
+        cfg = ModelConfig(label="m", base_url=f"http://127.0.0.1:{server.server_port}/v1", model="fake",
+                          api_key_env=None, startup_wait_s=5)
+        waits = []
+
+        async def go(cfg):
+            client = ChatClient(cfg)
+            try:
+                return await client.wait_until_ready(on_wait=waits.append, poll_s=0.05)
+            finally:
+                await client.close()
+        assert asyncio.run(go(cfg)) is None and len(waits) == 3
+        server.shutdown()
+        server, _ = fake_llm.start(starting_polls=10**6)                  # never ready
+        cfg = ModelConfig(label="m", base_url=f"http://127.0.0.1:{server.server_port}/v1", model="fake",
+                          api_key_env=None, startup_wait_s=0.2)
+        assert "503" in asyncio.run(go(cfg))
+    finally:
+        server.shutdown()
+
+
+def test_use_model_replaces_the_study_models(tmp_path, capsys):
+    """--use-model: a GPT study played by another model, in a folder named after it."""
+    assert run.main(["configs/studies/action_channel.yaml", "--use-model", "configs/models/scripted.yaml",
+                     "--seeds", "1", "--only", "baseline", "--out", str(tmp_path), "-q", "--no-summary"]) == 0
+    folder = next(tmp_path.iterdir())
+    assert folder.name.endswith("__action_channel__scripted")
+    assert [p.parent.name for p in folder.glob("episodes/baseline/*/seed1_rep0")] == ["scripted"]
+    assert "gpt-4.1-mini" not in (folder / "index.csv").read_text()
+
+
+def test_time_left_counts_turns_not_episodes(monkeypatch):
+    """Three short games finish first, one long game is left (the three-games run of 23 Oct): the
+    estimate must follow the long game's remaining turns, not the average episode."""
+    from env.game_config import load_game
+    clock = [1000.0]
+    monkeypatch.setattr(run.time, "time", lambda: clock[0])
+    short = load_game("configs/games/team/game3_reserve_nochat.yaml", {"series.rounds": 5})   # 90 turns
+    long = load_game("configs/games/team/game1_chat.yaml", {"series.rounds": 5})              # 150 turns
+    jobs = [run.Job(f"s{i}", short, run.ModelConfig(label="m"), 1, 0) for i in range(3)] + \
+           [run.Job("long", long, run.ModelConfig(label="m"), 1, 0)]
+    p = run.Progress(jobs)
+    for _ in range(90):                                   # all four play side by side, 1 s per turn
+        clock[0] += 1
+        for j in jobs:
+            p.turn(j, 1.0)
+    for j in jobs[:3]:
+        p.finish(j)
+    # 60 turns left in the long game, one at a time at 1 s each: about 60 s, not ~0
+    assert 55 <= p.eta() <= 65
+    p.finish(jobs[3])
+    assert p.eta() == 0.0
+
+
 # --- metrics ignore random fills --------------------------------------------------------------------
 
 

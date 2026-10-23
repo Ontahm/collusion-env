@@ -34,7 +34,7 @@ import platform
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from importlib import metadata
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -230,6 +230,35 @@ def turns_per_round(game: GameConfig) -> int:
     return sum(p.passes * count[p.participants] for p in game.phases)
 
 
+class Progress:
+    """Time left, counted in turns: each episode's planned turns, the turns played so far and their
+    measured duration. The estimate is the larger of two limits: the turns left at the throughput
+    measured so far (episodes in parallel), and the longest episode left played one turn at a time
+    (an episode's turns are sequential, so a long episode alone at the end cannot go faster)."""
+
+    def __init__(self, jobs: List[Job]):
+        self.planned = {j.folder: turns_per_round(j.game) * j.game.series.rounds for j in jobs}
+        self.played: Dict[str, int] = {}
+        self.turns, self.turn_seconds, self.started = 0, 0.0, time.time()
+
+    def turn(self, job: Job, seconds: float) -> None:
+        self.played[job.folder] = self.played.get(job.folder, 0) + 1
+        self.turns += 1
+        self.turn_seconds += seconds
+
+    def finish(self, job: Job) -> None:
+        self.played[job.folder] = self.planned[job.folder]
+
+    def eta(self) -> Optional[float]:
+        left = [max(0, p - self.played.get(k, 0)) for k, p in self.planned.items()]
+        if not any(left):
+            return 0.0
+        if not self.turns:
+            return None
+        throughput = self.turns / max(1e-9, time.time() - self.started)
+        return max(sum(left) / throughput, max(left) * self.turn_seconds / self.turns)
+
+
 def describe(jobs: List[Job]) -> str:
     lines = [f"{len(jobs)} episodes"]
     by: Dict[Tuple[str, str], List[Job]] = {}
@@ -257,7 +286,7 @@ def is_complete(job: Job, run_dir: Path) -> bool:
 
 
 async def run_job(job: Job, run_dir: Path, clients: Dict[str, ChatClient], index_lock: asyncio.Lock,
-                  log: RunLogger) -> Tuple[str, int]:
+                  log: RunLogger, progress: Optional[Progress] = None) -> Tuple[str, int]:
     """Play one episode and write its files. Returns (status, rounds played)."""
     folder = run_dir / job.folder
     if is_complete(job, run_dir):
@@ -271,6 +300,8 @@ async def run_job(job: Job, run_dir: Path, clients: Dict[str, ChatClient], index
         turns_f.write(json.dumps(record, default=str) + "\n")
         turns_f.flush()
         log.turn(job.label, record)
+        if progress:
+            progress.turn(job, float(record.get("seconds") or 0.0))
 
     def log_call(record: Dict[str, Any]) -> None:
         calls_f.write(json.dumps(record, default=str) + "\n")
@@ -387,12 +418,21 @@ async def run_all(jobs: List[Job], run_dir: Path, concurrency: int, log: Optiona
     dead: Dict[str, str] = {}                          # model label -> fatal error: its remaining episodes are skipped
     pending = {j.model.label for j in jobs if not is_complete(j, run_dir)}
     for label, client in clients.items():
+        if label in pending and client.config.startup_wait_s:
+            log.plan(f"waiting for {label!r} to start (up to {client.config.startup_wait_s / 60:.0f} min)")
+            problem = await client.wait_until_ready()
+            if problem:
+                dead[label] = f"server not ready after {client.config.startup_wait_s / 60:.0f} min: {problem}"
+                log.error(f"model {label!r} not run: {dead[label]}")
+                continue
+            log.plan(f"{label!r} is up")
         if label in pending and is_local(client.config):
             problem = await local_model_problem(client)
             if problem:
                 dead[label] = problem
                 log.error(f"model {label!r} not run: {problem}")
     started = time.time()
+    progress = Progress(jobs)
 
     async def one(job: Job) -> None:
         async with sem:
@@ -403,7 +443,7 @@ async def run_all(jobs: List[Job], run_dir: Path, concurrency: int, log: Optiona
             else:
                 t0 = time.time()
                 try:
-                    status, n_rounds = await run_job(job, run_dir, clients, lock, log)
+                    status, n_rounds = await run_job(job, run_dir, clients, lock, log, progress)
                 except FatalModelError as exc:
                     dead[job.model.label] = str(exc)
                     log.error(f"stopping every episode of model {job.model.label!r}: {exc}")
@@ -413,7 +453,9 @@ async def run_all(jobs: List[Job], run_dir: Path, concurrency: int, log: Optiona
                     status, n_rounds = "failed", 0
                 seconds = time.time() - t0
             counts[status] = counts.get(status, 0) + 1
-            log.progress(sum(counts.values()), len(jobs), job.label, status, seconds, started, n_rounds)
+            progress.finish(job)
+            log.progress(sum(counts.values()), len(jobs), job.label, status, seconds, started, n_rounds,
+                         eta=progress.eta())
 
     try:
         await asyncio.gather(*(one(j) for j in jobs))
@@ -431,6 +473,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--scripted", nargs="?", const="colluder", default=None)
     parser.add_argument("--only")
     parser.add_argument("--models")
+    parser.add_argument("--use-model", help="model file(s), comma-separated, replacing the study's models "
+                                            "(e.g. the same study on an open model on Modal)")
     parser.add_argument("--seeds")
     parser.add_argument("--replications", type=int)
     parser.add_argument("--resume")
@@ -454,6 +498,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     log = RunLogger(settings)
     try:
         study = build(StudyConfig, load_yaml(args.study), "study")
+        if args.use_model:
+            study = replace(study, models=tuple(m.strip() for m in args.use_model.split(",") if m.strip()))
         jobs = plan(study, only=args.only.split(",") if args.only else None,
                     models=args.models.split(",") if args.models else None,
                     seeds=parse_seeds(args.seeds) if args.seeds else None,
@@ -479,7 +525,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     else:
         stamp = time.strftime("%Y%m%d-%H%M%S")
         parent = args.out or os.environ.get("COLLUSION_RUNS_DIR") or study.out_dir
-        run_dir = resolve_path(parent) / f"{stamp}__{study.name}{'__scripted' if args.scripted else ''}"
+        suffix = "__scripted" if args.scripted else ""
+        if args.use_model and not args.scripted:              # the folder says which model replaced the study's
+            suffix = "__" + "+".join(sorted({j.model.label for j in jobs}))
+        run_dir = resolve_path(parent) / f"{stamp}__{study.name}{suffix}"
     run_dir.mkdir(parents=True, exist_ok=True)
     log.open_file(run_dir / "run.log", preamble=plan_text)
     log.plan(f"run folder: {run_dir}")
