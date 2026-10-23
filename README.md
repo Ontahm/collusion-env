@@ -242,7 +242,27 @@ flowchart LR
   model file `configs/models/local-qwen3-4b-abliterated.yaml`).
 - `local_pilot` plays every game for 2 rounds: at most 576 model calls, about 2 s each with thinking
   off, so at most about 20 minutes. It checks the whole chain with a real model; it is not a result.
-- Thinking on: `configs/models/local-qwen3-4b-thinking.yaml` (about 15x slower).
+- Thinking on: `configs/models/local-qwen3-4b-thinking.yaml` (about 15x slower). Its answers can use
+  4,096 tokens, so its context must hold at least about 9,400 (5,259 + 4,096).
+- A run checks first that the local server serves each local model's name (`GET /models`). A
+  llama-server answers whatever name a request gives, so without this check a run of the abliterated
+  config against the normal server would be recorded under the wrong label. A model whose server
+  is not running, or serves another model, is not run (its episodes are marked "not run", the exit
+  code is 3); start the right server and continue with `--resume`.
+
+**Rehearsing the GPT studies locally.** Each study we plan on gpt-4.1-mini has a local mirror with
+the same conditions and the same boards (same seeds, or the first of them), sized for one consumer
+GPU. Times are estimates from the pilot on an RTX 2060 (Qwen3-4B, thinking off). A 4B model is not a
+stand-in for gpt-4.1-mini: these runs find problems in the pipeline, prompts and charts, and show
+whether a condition changes anything at all; they do not predict GPT's results.
+
+| Local study | Mirrors | Size | Time |
+|---|---|---|---|
+| `local_paper.yaml` | `colosseum_paper.yaml` | 3 conditions x seeds 1-5 | ~45 min |
+| `local_action_channel.yaml` | `action_channel.yaml` | 6 conditions x seeds 1-20 (full size) | ~30 min |
+| `local_team_three_games.yaml` | `team_three_games.yaml` | 4 conditions, 5 rounds instead of 20 | ~25 min |
+| `local_team_variants.yaml` | `team_variants.yaml` | 10 variants, 3 rounds each (`--only` for a subset) | ~25 min |
+| `local_models.yaml` | — | Qwen3-4B vs thinking vs abliterated, claim-only games, seeds 1-3 | ~1 h 30, in two passes (see the file) |
 
 ---
 
@@ -285,6 +305,7 @@ Variables already set in your shell win; the command line wins over both.
 | Study (`configs/studies/`) | What it runs |
 |---|---|
 | `local_pilot.yaml` | every game, 2 rounds, local Qwen3-4B: first real-model check |
+| `local_*.yaml` | local rehearsals of the studies below, and a comparison of the local models (section 5) |
 | `colosseum_paper.yaml` | Colosseum's three Jira conditions (baseline, emergent, prompted), seeds 1-10, gpt-4.1-mini: validates the environment against the paper |
 | `team_three_games.yaml` | the team's three games + the no-instruction reference, 20 rounds each |
 | `team_variants.yaml` | each alternative of the design as its own condition |
@@ -352,7 +373,7 @@ flowchart LR
 | File in `runs/<timestamp>__<study>/` | Contents |
 |---|---|
 | `summary.md`, `summary.csv` | per condition and model: rates with 95% intervals, team loss, coalition advantage, health, tokens, cost |
-| `figures/` | PNG + PDF: who holds the high-value ticket; results by board kind and by round; team loss; coalition advantage; reservation signals; health |
+| `figures/` | PNG + PDF: who holds the high-value ticket; results by board kind and by round; team loss; coalition advantage; reservation signals; health. One row per condition (in the study's order), one panel per measure, one colour per model; dot = rate or mean, line = 95% interval, n = rounds |
 | `index.csv` | one row per round, every metric |
 | `episodes/<condition>/<model>/seed<k>_rep<r>/episode.json` | each round in full: board, colluders, order, messages, reservations, claims, scores, metrics |
 | `.../turns.jsonl` | every turn: the exact prompt, tools offered, tool calls and their results |
