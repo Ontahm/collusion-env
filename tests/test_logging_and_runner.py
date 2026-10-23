@@ -254,7 +254,7 @@ def test_run_listing(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "ACT-4 act_noisy" in out and "1 runs" in out and "noisy" in out and "same issue" in out
     assert runs.where("http://127.0.0.1:8080/v1") == "local" and runs.where("https://api.openai.com/v1") == "openai"
-    assert runs.where("https://ontahm--collusion-vllm-server.us-east.modal.direct/v1") == "modal"
+    assert runs.where("https://someone--collusion-vllm-server.us-east.modal.direct/v1") == "modal"
 
 
 def test_episode_story(tmp_path, capsys):
@@ -271,6 +271,31 @@ def test_episode_story(tmp_path, capsys):
     assert "HV-2 team_game2" in out and "round 2 of 2" in out and "round 1 of 2" not in out
     assert "high-value ticket" in out and "-- reservation pass 1" in out and "-- claims" in out and "team loss" in out
     assert episode.main([str(run_dir), "--cond", "nope", "--seed", "1"]) == 1
+
+
+def test_modal_url_comes_from_each_person_s_env(monkeypatch):
+    """configs/models/modal-vllm.yaml is shared; each person's server URL comes from their .env."""
+    from agents import load_model
+    from agents.llm import ChatClient
+    monkeypatch.delenv("MODAL_VLLM_BASE_URL", raising=False)
+    cfg = load_model("configs/models/modal-vllm.yaml")
+    assert "YOUR-WORKSPACE" in cfg.base_url
+    with pytest.raises(RuntimeError, match="make modal-setup"):
+        ChatClient(cfg)
+    monkeypatch.setenv("MODAL_VLLM_BASE_URL", "https://me--collusion-vllm-server.us-east.modal.direct/v1/")
+    assert load_model("configs/models/modal-vllm.yaml").base_url == "https://me--collusion-vllm-server.us-east.modal.direct/v1"
+    assert load_model("configs/models/modal-vllm-thinking.yaml").base_url == "https://me--collusion-vllm-server.us-east.modal.direct/v1"
+
+
+def test_missing_url_or_key_is_reported_before_a_run(tmp_path, monkeypatch, capsys):
+    monkeypatch.delenv("MODAL_VLLM_BASE_URL", raising=False)
+    monkeypatch.delenv("MODAL_VLLM_API_KEY", raising=False)
+    monkeypatch.setattr(run, "load_env_file", lambda *a, **k: None)
+    code = run.main(["configs/studies/action_channel.yaml", "--use-model", "configs/models/modal-vllm.yaml",
+                     "--seeds", "1", "--only", "baseline", "--yes", "--out", str(tmp_path)])
+    out = capsys.readouterr()
+    assert code == 2 and "MODAL_VLLM_BASE_URL" in out.out + out.err and "MODAL_VLLM_API_KEY" in out.out + out.err
+    assert not any(tmp_path.iterdir())                                   # nothing was started
 
 
 # --- metrics ignore random fills --------------------------------------------------------------------

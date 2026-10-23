@@ -10,6 +10,25 @@ Tested end to end on 23 Oct 2026 with Qwen3-8B on one L40S (setup, security chec
 run gpt-4.1-mini** (the paper's model): OpenAI never released its weights, so it is only reachable
 through OpenAI's API, with an `OPENAI_API_KEY` (`configs/models/gpt-4.1-mini.yaml`).
 
+## Quick start
+
+```bash
+make modal-setup                                              # once per person
+make modal-run STUDY=configs/studies/action_channel.yaml      # any study (ARGS='--seeds 1-3', CONC=30)
+```
+
+- `make modal-setup`: installs the `modal` command if missing, logs you in (browser), creates an
+  endpoint key (in the Modal secret and in `.env`), deploys, saves your URL in `.env`, checks the
+  model answers and that requests without the key are refused (401), then stops the server. Run it
+  again to get a new key.
+- `make modal-run STUDY=...`: deploys, runs the study on the model (it waits for the cold start),
+  then stops the server, also on error or Ctrl+C. `MODAL_MODEL=configs/models/modal-vllm-thinking.yaml`
+  for thinking on.
+- Stop by hand: `modal app stop collusion-vllm`.
+
+Each person uses their own Modal account and credits: the model file is shared, and each person's
+URL and key live in their own `.env`. The sections below explain what these commands do.
+
 ## How it works, in one picture
 
 ```mermaid
@@ -64,7 +83,7 @@ modal deploy deploy/modal_vllm.py
 ```
 
 It prints the URL, `https://<workspace>--collusion-vllm-server.<region>.modal.direct`. Put that URL
-followed by `/v1` as `base_url` in your model file (see "Several people" below for which file).
+followed by `/v1` in `.env` as `MODAL_VLLM_BASE_URL`: the model file reads it from there.
 
 ```bash
 make check-model MODEL=configs/models/modal-vllm.yaml
@@ -151,18 +170,13 @@ parameters (8B: 16 GB on a 48 GB L40S; 32B: about 64 GB, so an 80 GB H100), plus
 
 ## Several people
 
-Two ways, both fine:
+Each person runs `make modal-setup` with their own Modal account and pays with their own credits:
+`configs/models/modal-vllm.yaml` is the same for everyone, because the URL and the key come from each
+person's `.env`. To share one server instead, the owner gives the key and URL privately (a password
+manager, not Slack or git) and the others put them in their `.env`.
 
-1. **Each person deploys in their own workspace.** Their URL differs: copy
-   `configs/models/modal-vllm.yaml` to `configs/models/modal-<name>.yaml`, set your `base_url` and a
-   distinct `label`, and use that file with `--use-model`. Each person pays for their own GPU.
-2. **One shared endpoint.** The owner shares the key privately (a password manager, not Slack and
-   not git); others put it in their `.env` as `MODAL_VLLM_API_KEY` and use the committed
-   `configs/models/modal-vllm.yaml`. Runs from several people at once share one GPU (vLLM handles
-   it, Modal may start a second container under heavy load).
-
-The URL is in `configs/models/modal-vllm.yaml`, in the team's private repo. Keep it private: a request
-without the key is refused, but it can still wake a GPU for 15 billed minutes.
+Keep your URL private: a request without the key is refused, but it can still wake a GPU for 15
+billed minutes.
 
 ## Security notes
 
@@ -171,7 +185,8 @@ without the key is refused, but it can still wake a GPU for 15 billed minutes.
 - **The key reaches vLLM through the `VLLM_API_KEY` environment variable** (the Modal secret), never
   as `--api-key`: vLLM prints its command-line arguments, key included, in its log. Check after a
   deploy: in `modal app logs collusion-vllm`, the `non-default args` line must not contain `api_key`.
-- **Replacing the key** (if it leaked, or someone leaves the team):
+- **Replacing the key** (if it leaked, someone leaves the team, or `.env` and Modal disagree):
+  `make modal-setup` again. By hand:
 
   ```bash
   modal app stop collusion-vllm
@@ -188,14 +203,16 @@ without the key is refused, but it can still wake a GPU for 15 billed minutes.
 | `Please add a payment method to use L40S GPU functions` | no card on the account | add one (see "What you need") |
 | `HTTP 503 … no upstreams available` | the container is still starting | wait: `make check-model` and runs wait by themselves up to `startup_wait_s` |
 | check fails after 20 min | the server crashed at start | `modal app logs collusion-vllm` (out of memory: smaller `MAX_MODEL_LEN` or a bigger GPU) |
-| `HTTP 401` from `make check-model` | `.env` key ≠ Modal secret | redo the key steps |
+| `HTTP 401` from `make check-model` | `.env` key ≠ Modal secret | `make modal-setup` (new key in both places) |
 | `curl` prints `200` | the key is not enforced | `modal app stop collusion-vllm`, then check the deploy file and logs |
 | turns without tool calls | wrong `TOOL_PARSER` for the model family | redeploy with the right parser |
 | `modal: command not found` | `~/.local/bin` not on PATH | `uv tool update-shell`, new terminal |
+| `MODAL_VLLM_BASE_URL is not set` | no setup on this machine yet | `make modal-setup` |
 
 ## Files
 
 - `modal_vllm.py`: the Modal app (image, GPU, cache volumes, vLLM command).
-- `../configs/models/modal-vllm.yaml`: how the environment calls it (URL, model name, key variable,
-  thinking off, startup wait).
+- `../configs/models/modal-vllm.yaml`: how the environment calls it (URL and key from `.env`, model
+  name, thinking off, startup wait); `modal-vllm-thinking.yaml`: the same server, thinking on.
+- `../Makefile`: `modal-setup`, `modal-run`.
 - `../configs/studies/modal_paper.yaml`: the local_paper boards on this model.

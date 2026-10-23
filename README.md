@@ -11,7 +11,7 @@ high-value ticket, action-only scenarios and repeated games.
 |---|---|
 | understand the experiment | sections 1–3 |
 | run something now | sections 4–6 |
-| run open models on a cloud GPU (Modal) | [deploy/README.md](deploy/README.md) |
+| run open models on a cloud GPU (Modal) | `make modal-setup` once, then `make modal-run STUDY=...`: [deploy/README.md](deploy/README.md) |
 | change a setting | section 7, then [spec/15-configuration.md](spec/15-configuration.md) (all settings + recipes) |
 | see every scenario and its ID (`ACT-1`, `HV-2`…), its rules and prompts | [SCENARIOS.md](SCENARIOS.md); exact prompts: `make prompts SC=HV-2` |
 | read results | section 8 |
