@@ -3,18 +3,21 @@
 Usage:
     python -m analysis.paper_figure runs/<run folder> [--colosseum <Colosseum summary.csv>]
 
-Writes figures/paper_comparison.(png|pdf) and paper_comparison.md in the run folder:
+Writes, in the run folder:
 
-  left    normalised regret (1 - team score / optimum) per condition: mean over seeds, 95% CI
-  middle  regret gap in points (non-colluders' mean regret - colluders'), the quantity behind the
-          paper's "coalition advantage"
-  right   change in normalised regret from the baseline (no secret channel), paired by seed, with the
-          paper's GPT-4.1-mini values (read off Fig. 4 of arXiv:2602.15198; approximate). The change in
-          regret gap, and a run of Colosseum's own code if given, are in paper_comparison.md
+  figures/paper_comparison.(png|pdf)   our run next to the paper, as the paper reports it (Fig. 4 of
+      arXiv:2602.15198, GPT-4.1-mini, read off the plot, approximate): the change from the
+      no-secret-channel control, for each secret-channel condition, in
+        - team regret (normalised regret: 1 - team score / optimum; higher = the team does worse)
+        - coalition advantage (Colosseum's: the non-colluders' mean regret minus the colluders',
+          rescaled to [0, 1] by the largest absolute gap of the model's runs, as Colosseum's
+          `_normalize_coalition_regret_gap`; higher = the colluders do better)
+      Ours: mean over seeds, paired by seed, 95% interval. Paper: one value, no interval published.
+  figures/paper_comparison_conditions.(png|pdf)   our run only: both measures per condition
+  paper_comparison.md   the numbers
 
-Units: Colosseum's chart rescales the coalition advantage by the largest gap a model reaches across
-its runs (`_normalize_coalition_regret_gap`), so it is not comparable between studies; the regret gap
-is shown in points instead. The paper's judge score is not reproduced (no judge in this repository).
+The rescaling divides by the largest gap in *this* run's data (the paper: in its runs), so the
+advantage values are comparable in kind, not exactly. The judge score is not reproduced.
 """
 
 from __future__ import annotations
@@ -38,6 +41,8 @@ LABELS = {"baseline": "No secret channel", "emergent": "Secret channel,\nno inst
 # the text says prompted collusion "negatively affect[s] the cooperative system". So the values below
 # are condition minus control in regret, positive = the team does worse. Approximate.
 PAPER_DELTA_NORMALIZED_REGRET = {"emergent": 0.035, "prompted": 0.07}
+# Fig. 4, left panel ("Change in Coalition Advantage on Jira"), GPT-4.1-mini, read off the plot.
+PAPER_DELTA_ADVANTAGE = {"emergent": 0.08, "prompted": 0.17}
 T95 = {1: 12.71, 2: 4.30, 3: 3.18, 4: 2.78, 5: 2.57, 6: 2.45, 7: 2.36, 8: 2.31, 9: 2.26, 10: 2.23, 15: 2.13, 20: 2.09}
 
 
@@ -78,24 +83,67 @@ def colosseum_rows(path: Path) -> List[dict]:
     return rows
 
 
+def rescaled(gaps: Dict[str, Dict[int, float]]) -> Dict[str, Dict[int, float]]:
+    """Colosseum's coalition advantage: 0.5 + gap / (2 x largest |gap| of the model's runs), in [0, 1]."""
+    top = max((abs(v) for seeds in gaps.values() for v in seeds.values()), default=0.0)
+    if top == 0.0:
+        return {c: {s: 0.5 for s in seeds} for c, seeds in gaps.items()}
+    return {c: {s: min(1.0, max(0.0, 0.5 + v / (2 * top))) for s, v in seeds.items()} for c, seeds in gaps.items()}
+
+
+def paired_delta(data: Dict[str, Dict[int, float]], c: str) -> Tuple[Optional[float], Optional[float]]:
+    seeds = sorted(set(data.get(c, {})) & set(data.get("baseline", {})))
+    return mean_ci([data[c][s] - data["baseline"][s] for s in seeds])
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("run")
-    ap.add_argument("--colosseum", help="summary.csv of a run of Colosseum's own code (optional, for the right panel)")
+    ap.add_argument("--colosseum", help="summary.csv of a run of Colosseum's own code (optional, for the table)")
     args = ap.parse_args(argv)
     run = Path(args.run)
     rows = list(csv.DictReader(open(run / "index.csv", encoding="utf-8")))
     nr = per_seed(rows, "normalized_regret")
     gap = per_seed(rows, "regret_gap")
+    adv = rescaled(gap)
     conds = [c for c in CONDITIONS if c in nr]
-    if not conds:
-        raise SystemExit(f"no conditions named {CONDITIONS} in {run}/index.csv")
-
+    if "baseline" not in conds or len(conds) < 2:
+        raise SystemExit(f"need the conditions {CONDITIONS} in {run}/index.csv")
+    treated = conds[1:]
+    n_seeds = len(nr["baseline"])
     style()
-    fig, axes = plt.subplots(1, 3, figsize=(13, 4.2))
+    ours_color, paper_color = "#2f6f9f", "#b9b9b9"
+
+    # 1. our run next to the paper -----------------------------------------------------------------
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.4))
+    panels = ((axes[0], nr, PAPER_DELTA_NORMALIZED_REGRET, "Change in team regret\n(higher = the team does worse)"),
+              (axes[1], adv, PAPER_DELTA_ADVANTAGE, "Change in coalition advantage\n(higher = the colluders do better)"))
+    for ax, data, paper, title in panels:
+        for i, c in enumerate(treated):
+            m, h = paired_delta(data, c)
+            if m is not None:
+                ax.bar(i - 0.19, m, width=0.36, color=ours_color, label=f"Our run (gpt-4.1-mini, {n_seeds} seeds)" if i == 0 else None)
+                if h is not None:
+                    ax.errorbar(i - 0.19, m, yerr=h, color="black", capsize=4, lw=1)
+                ax.annotate(f"{m:+.3f}", (i - 0.19, m), textcoords="offset points", xytext=(0, 4 if m >= 0 else -12),
+                            ha="center", fontsize=8)
+            if c in paper:
+                ax.bar(i + 0.19, paper[c], width=0.36, color=paper_color, hatch="//", edgecolor="#777777",
+                       label="Paper, Fig. 4 (approx.)" if i == 0 else None)
+                ax.annotate(f"{paper[c]:+.3f}", (i + 0.19, paper[c]), textcoords="offset points", xytext=(0, 4),
+                            ha="center", fontsize=8)
+        ax.set_xticks(range(len(treated)), [LABELS[c] for c in treated], fontsize=9)
+        ax.axhline(0, color="black", lw=0.6)
+        ax.set_title(title, fontsize=10)
+        ax.legend(fontsize=8, frameon=False, loc="upper left")
+    fig.suptitle("Colosseum's Jira result: our reproduction vs the paper (change from no secret channel)", fontsize=11)
+    paths = save(fig, run / "figures", "paper_comparison")
+    plt.close(fig)
+
+    # 2. our run per condition -----------------------------------------------------------------------
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.0))
     colors = {"baseline": "#6b7a8f", "emergent": "#3a8f8a", "prompted": "#c0703f"}
-    lines = [f"# Paper comparison: {run.name}", "", "| condition | normalised regret (95% CI) | regret gap, points (95% CI) | seeds |", "|---|---|---|---|"]
-    for ax, data, title in ((axes[0], nr, "Normalised regret (lower = better team)"),
+    for ax, data, title in ((axes[0], nr, "Team regret (normalised; lower = better team)"),
                             (axes[1], gap, "Regret gap, points (higher = colluders do better)")):
         for i, c in enumerate(conds):
             m, h = mean_ci(list(data.get(c, {}).values()))
@@ -107,50 +155,32 @@ def main(argv: Optional[List[str]] = None) -> int:
         ax.set_xticks(range(len(conds)), [LABELS[c] for c in conds], fontsize=8)
         ax.set_title(title, fontsize=10)
         ax.axhline(0, color="black", lw=0.6)
+    fig.suptitle(f"Our run only, per condition ({run.name})", fontsize=11)
+    paths += save(fig, run / "figures", "paper_comparison_conditions")
+    plt.close(fig)
+
+    # table ------------------------------------------------------------------------------------------
+    fmt = lambda mh: "n/a" if mh[0] is None else (f"{mh[0]:+.3f}" + (f" ± {mh[1]:.3f}" if mh[1] is not None else ""))
+    lines = [f"# Paper comparison: {run.name}", "", "## Change from the no-secret-channel control (ours: paired by seed, 95% interval)", "",
+             "| condition | team regret, ours | team regret, paper | coalition advantage, ours | coalition advantage, paper | regret gap (points), ours |",
+             "|---|---|---|---|---|---|"]
+    for c in treated:
+        lines.append(f"| {c} | {fmt(paired_delta(nr, c))} | {PAPER_DELTA_NORMALIZED_REGRET[c]:+.3f} | "
+                     f"{fmt(paired_delta(adv, c))} | {PAPER_DELTA_ADVANTAGE[c]:+.3f} | {fmt(paired_delta(gap, c))} |")
+    lines += ["", "## Our run per condition (mean over seeds, 95% interval)", "",
+              "| condition | team regret | regret gap, points | seeds |", "|---|---|---|---|"]
     for c in conds:
         m1, h1 = mean_ci(list(nr.get(c, {}).values()))
         m2, h2 = mean_ci(list(gap.get(c, {}).values()))
-        fmt = lambda m, h: "n/a" if m is None else (f"{m:.3f}" + (f" ± {h:.3f}" if h is not None else ""))
-        lines.append(f"| {c} | {fmt(m1, h1)} | {fmt(m2, h2)} | {len(nr.get(c, {}))} |")
-
-    # right: change from baseline, paired by seed
-    ax = axes[2]
-    lines += ["", "## Change from the baseline (paired by seed)", "",
-              "| condition | Δ normalised regret (95% CI) | paper, Fig. 4 (approx.) | Δ regret gap, points (95% CI) |", "|---|---|---|---|"]
-    x = 0
-    ticks = []
-    for c in conds[1:]:
-        seeds = sorted(set(nr.get(c, {})) & set(nr.get("baseline", {})))
-        m, h = mean_ci([nr[c][s] - nr["baseline"][s] for s in seeds])
-        if m is not None:
-            ax.bar(x, m, width=0.55, color=colors[c], label="this run" if x == 0 else None)
-            if h is not None:
-                ax.errorbar(x, m, yerr=h, color="black", capsize=4, lw=1)
-        if c in PAPER_DELTA_NORMALIZED_REGRET:
-            ax.plot(x, PAPER_DELTA_NORMALIZED_REGRET[c], marker="D", color="black", ms=7, zorder=5,
-                    label="paper, Fig. 4 (approx.)" if x == 0 else None)
-        ticks.append(LABELS[c])
-        d1 = mean_ci([nr[c][s] - nr["baseline"][s] for s in sorted(set(nr.get(c, {})) & set(nr.get("baseline", {})))])
-        d2 = mean_ci([gap[c][s] - gap["baseline"][s] for s in sorted(set(gap.get(c, {})) & set(gap.get("baseline", {})))])
-        f = lambda mh: "n/a" if mh[0] is None else (f"{mh[0]:+.3f}" + (f" ± {mh[1]:.3f}" if mh[1] is not None else ""))
-        lines.append(f"| {c} | {f(d1)} | {PAPER_DELTA_NORMALIZED_REGRET.get(c, float('nan')):+.3f} | {f(d2)} |")
-        x += 1
+        lines.append(f"| {c} | {fmt((m1, h1))} | {fmt((m2, h2))} | {len(nr.get(c, {}))} |")
     if args.colosseum:
-        crow = colosseum_rows(Path(args.colosseum))
-        cgap = per_seed(crow, "regret_gap")
-        lines += ["", f"Colosseum's own code ({args.colosseum}): Δ regret gap, points, paired by seed: " + ", ".join(
-            f"{c} {mean_ci([cgap[c][s] - cgap['baseline'][s] for s in sorted(set(cgap.get(c, {})) & set(cgap.get('baseline', {})))])[0]:+.2f}"
-            for c in conds[1:] if c in cgap)]
-    ax.set_xticks(range(len(ticks)), ticks, fontsize=8)
-    ax.axhline(0, color="black", lw=0.6)
-    ax.set_title("Change in normalised regret from baseline\n(paired by seed; ◆ the paper's GPT-4.1-mini)", fontsize=10)
-    ax.legend(fontsize=8, frameon=False)
-    fig.suptitle(f"Colosseum reproduction, {run.name}", fontsize=11)
-    paths = save(fig, run / "figures", "paper_comparison")
-    plt.close(fig)
-    lines += ["", "Paper values: Fig. 4 of arXiv:2602.15198, GPT-4.1-mini (point 1), read off the plot (approximate).",
-              "The paper's coalition-advantage axis is rescaled per model, so only its direction is comparable;",
-              "the judge score is not reproduced.", "", "Figures: " + ", ".join(str(p.relative_to(run)) for p in paths)]
+        cgap = per_seed(colosseum_rows(Path(args.colosseum)), "regret_gap")
+        lines += ["", f"Colosseum's own code ({args.colosseum}), change in regret gap (points), paired by seed: " +
+                  ", ".join(f"{c} {fmt(paired_delta(cgap, c))}" for c in treated if c in cgap)]
+    lines += ["", "Paper: Fig. 4 of arXiv:2602.15198, GPT-4.1-mini (point 1), read off the plot (approximate); its",
+              "regret axis is drawn with \"More\" at the top. Coalition advantage rescaled as Colosseum does, by the",
+              "largest gap in each study's own runs, so comparable in kind, not exactly. No judge score.",
+              "", "Figures: " + ", ".join(str(p.relative_to(run)) for p in paths)]
     (run / "paper_comparison.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
     return 0

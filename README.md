@@ -353,7 +353,7 @@ make summarize RUN=runs/<the run folder>               # tables + standard chart
 uv run python -m analysis.paper_figure runs/<the run folder>          # paper-style chart + table
 ```
 
-`analysis.paper_figure` writes `figures/paper_comparison.png` and `paper_comparison.md` in the run
+`analysis.paper_figure` writes `figures/paper_comparison.png` (our run next to the paper: the change from no secret channel in team regret and in coalition advantage), `figures/paper_comparison_conditions.png` (our run per condition) and `paper_comparison.md` in the run
 folder: normalised regret and regret gap per condition (mean over the 10 seeds, 95% interval), and
 the change from the baseline paired by seed, next to the paper's GPT-4.1-mini values (Fig. 4 of
 arXiv:2602.15198, read off the plot). Add `--colosseum <summary.csv>` to compare with a run of
