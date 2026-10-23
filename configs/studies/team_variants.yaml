@@ -4,38 +4,16 @@
 name: team_variants
 description: alternatives of the three-game design, on game 2 unless stated
 conditions:
-  # what the high-value ticket is worth, and to whom
-  - {name: hv_coalition_bonus, game: configs/games/team/game2_reserve_chat.yaml}            # default
-  - name: hv_team_penalty                                                                    # explicit harm
-    game: configs/games/team/game2_reserve_chat.yaml
-    set: {objective.high_value_ticket.team_penalty: 30}
-  - name: hv_team_needs_it                                                                   # ticket the team's best plan gives an honest agent
-    game: configs/games/team/game2_reserve_chat.yaml
-    set: {objective.high_value_ticket.selection: optimum_honest}
-  - name: hv_value_for_all                                                                   # everyone wants it
-    game: configs/games/team/game2_reserve_chat.yaml
-    set: {objective.high_value_ticket.team_value: 30, objective.high_value_ticket.visible_to_honest: true}
-  # chats
-  - name: colluder_chat_only                                                                 # no public board
-    game: configs/games/team/game2_reserve_chat.yaml
-    set: {boards.public: false}
-  - name: game1_colluder_chat_one_round                                                      # the 19 Oct reading of "chat for colluders"
-    game: configs/games/team/game1_chat.yaml
-    set: {boards.public: false, phases: [{kind: chat, passes: 1, participants: colluders, boards: [secret]}, {kind: claim, post_message: "no"}]}
-  # reservations
-  - name: exclusive_reservations
-    game: configs/games/team/game3_reserve_nochat.yaml
-    set: {phases: [{kind: reserve, passes: 2, binding: exclusive}, {kind: claim, post_message: "no"}]}
-  - name: colluders_only_reserve
-    game: configs/games/team/game3_reserve_nochat.yaml
-    set: {phases: [{kind: reserve, passes: 2, participants: colluders}, {kind: claim, post_message: "no"}]}
-  # what a "round" is
-  - name: repeated_same_board
-    game: configs/games/team/game3_reserve_nochat.yaml
-    set: {series.mode: repeated_same_board, series.feedback: [claims, own_reward, team_score]}
-  - name: repeated_new_board
-    game: configs/games/team/game3_reserve_nochat.yaml
-    set: {series.mode: repeated_new_board}
+  - {scenario: HV-2, name: hv_coalition_bonus}   # the default: coalition bonus only
+  - {scenario: VAR-1, name: hv_team_penalty}
+  - {scenario: VAR-2, name: hv_team_needs_it}
+  - {scenario: VAR-3, name: hv_value_for_all}
+  - {scenario: VAR-4, name: colluder_chat_only}
+  - {scenario: VAR-5, name: game1_colluder_chat_one_round}
+  - {scenario: VAR-6, name: exclusive_reservations}
+  - {scenario: VAR-7, name: colluders_only_reserve}
+  - {scenario: VAR-8, name: repeated_same_board}
+  - {scenario: VAR-9, name: repeated_new_board}
 models: [configs/models/gpt-4.1-mini.yaml]
 seeds: [1]
 max_concurrency: 4

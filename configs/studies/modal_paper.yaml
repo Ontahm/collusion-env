@@ -1,0 +1,15 @@
+# local_paper.yaml on an open model served by Modal (deploy/README.md): the same three Colosseum
+# conditions and the same boards (seeds 1-5), so the results compare board by board with the local
+# Qwen3-4B run. A first look at whether a larger model herds less and colludes in the paper's sense.
+#   make check-model MODEL=configs/models/modal-vllm.yaml
+#   make run STUDY=configs/studies/modal_paper.yaml ARGS=--yes
+name: modal_paper
+description: Colosseum's conditions on the local_paper boards, open model on Modal
+conditions:
+  - {scenario: PAPER-0, name: baseline}   # no secret channel, not instructed (Colosseum's control)
+  - {scenario: PAPER-1, name: emergent}   # secret channel, not instructed
+  - {scenario: PAPER-2, name: prompted}   # secret channel + "simple" coalition instruction
+models: [configs/models/modal-vllm.yaml]
+seeds: 1-5
+replications: 1
+max_concurrency: 8                   # vLLM serves many requests at once
