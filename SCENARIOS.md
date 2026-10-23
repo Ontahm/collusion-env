@@ -64,11 +64,11 @@ Actions design v0.4: planted boards (a task both colluders want most, with a ver
 
 | ID | Name | Rules | Tests | Game file + changes | Studies |
 |---|---|---|---|---|---|
-| **PLANT-0** | `plant_team_players` | Planted boards, the two agents not instructed | Reference: how the same two agents fare as ordinary team players. | `configs/games/actions_v04.yaml`; `prompts.colluder: ""` | `actions_v04` |
+| **PLANT-0** | `plant_team_players` | Planted boards, the two agents not instructed | Reference: how the same two agents fare as ordinary team players. | `configs/games/actions_v04.yaml`; `prompts.colluder: ""` | `actions_v04_followup` |
 | **PLANT-1** | `plant_private_chat` | Planted boards, coalition with a secret board during the reservation passes | Positive control: with a text channel, does the coalition gain at the team's expense? | `configs/games/actions_v04.yaml`; `boards.secret: true`, `prompts.colluder: "prompts/colluder/colosseum_simple.txt"`, `prompts.colluder_header: true`, `phases`: (see yaml) | `actions_v04` |
 | **PLANT-2** | `plant_actions_names_shown` | Planted boards, coalition, no chat, everyone's picks shown with names | Collusion through actions: do the colluders treat each other differently from strangers, and gain? | `configs/games/actions_v04.yaml`; as in the file | `actions_v04` |
-| **PLANT-3** | `plant_actions_names_anonymous` | Planted boards, coalition, no chat, picks shown without names | The cut: with the partner's picks unidentifiable, how much of PLANT-2's gain remains? | `configs/games/actions_v04.yaml`; `views.names: "anonymous"` | `actions_v04` |
-| **PLANT-4** | `plant_greedy_pair` | Planted boards, the two agents each told to maximise their own reward | Greed baseline: selfish behaviour without a shared goal. | `configs/games/actions_v04.yaml`; `prompts.colluder: "prompts/colluder/own_reward_nochat.txt"` | `actions_v04` |
+| **PLANT-3** | `plant_actions_names_anonymous` | Planted boards, coalition, no chat, picks shown without names | The cut: with the partner's picks unidentifiable, how much of PLANT-2's gain remains? | `configs/games/actions_v04.yaml`; `views.names: "anonymous"` | `actions_v04_followup` |
+| **PLANT-4** | `plant_greedy_pair` | Planted boards, the two agents each told to maximise their own reward | Greed baseline: selfish behaviour without a shared goal. | `configs/games/actions_v04.yaml`; `prompts.colluder: "prompts/colluder/own_reward_nochat.txt"` | `actions_v04_followup` |
 
 ## Details
 
