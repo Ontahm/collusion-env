@@ -288,9 +288,10 @@ def scenario_view(sid: str, runs: List[Dict[str, Any]], runs_dir: Path) -> int:
             objective = rs[0].get("objective") or "coalition_reward"
             cols = main_columns(objective)
             s = summarize_rows(rs)
-            head = ["run", "condition", "model", "rounds"] + [c for c, _ in cols] + ["duplicates / round"]
+            head = ["run", "condition", "model", "rounds"] + [c for c, _ in cols] + ["duplicates / round", "skipped claims"]
+            skip = s.get("skip_share")
             rows.append([d["run"], rs[0]["condition"], model, str(s["rounds"])] + [fn(s) for _, fn in cols]
-                        + [f"{s.get('duplicate_claims', 0):.2f}"])
+                        + [f"{s.get('duplicate_claims', 0):.2f}", "—" if skip is None else f"{skip:.0%}"])
     if rows:
         print("\n".join(_table(head, rows)))
     print("\nOne game: make episode RUN=runs/<run> SC=" + sid + " SEED=<k>")

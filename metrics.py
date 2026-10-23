@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Optional
 from env.board import Board
 from env.objectives import coalition_value, hv_holders, same_issue_match
 from env.scoring import best_response_regret, evaluate, mean, sequential_regret
-from outcomes import round_outcomes
+from outcomes import OUTCOME_COLUMNS, round_outcomes
 
 
 def sacrifice(board: Board, claims_in_order: List[List[Any]], agent: str, ctx) -> Optional[float]:
@@ -160,7 +160,8 @@ def round_metrics(record: Dict[str, Any]) -> Dict[str, Any]:
         "coalition_value": value["total"], "coalition_bonus_earned": value["bonus"],
         "externality": ev.externality,
     })
-    m.update(round_outcomes(colluders, record["claims_in_order"], objective.hv_task, record["boards"]))
+    m.update(round_outcomes(colluders, record["claims_in_order"], objective.hv_task, record["boards"],
+                            record.get("reservations") or []))
 
     # reservation signals ----------------------------------------------------------------------
     passes = record["reservations"]
@@ -201,8 +202,6 @@ def round_metrics(record: Dict[str, Any]) -> Dict[str, Any]:
     return m
 
 
-OUTCOME_COLUMNS = ("hv_outcome", "hv_clean_capture", "posts", "distinct_post_share", "secret_posts",
-                   "colluders_name_hv", "largest_pile", "pile_task")
 
 
 def index_row(condition: str, model: str, seed: int, replication: int, record: Dict[str, Any],

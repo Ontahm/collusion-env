@@ -13,7 +13,8 @@ Run charts (each only when the run has the data for it):
   colosseum         regret gap (the paper's coalition advantage) and reward gap
   reservations      reservation-round signals (games with reservations)
   health            failed tool results, turns without a claim, missing and duplicate claims
-  chat_herding      repeated posts, colluders naming the ticket in secret, the largest pile on one task
+  chat_herding      repeated posts, colluders naming the ticket in secret, the largest pile on one task,
+                    skipped claims
 Board-study charts: conflict share by board size, and the distribution of the price of collusion.
 
 Layout: most charts are dot-and-interval plots. One row per condition (names on the left, so long
@@ -281,10 +282,11 @@ def run_figures(run_dir: Path, rows: Optional[List[dict]] = None) -> List[Path]:
                 MEAN_NOTE + ". Counts per round; read these before any collusion rate.", scale="count"), "health")
     keep(forest(groups, [("distinct posts (1 - repeats)", _mean_panel("distinct_post_share"), "rate"),
                          ("colluders name the ticket in secret chat", _rate_panel("colluders_name_hv"), "rate"),
-                         ("largest pile on one task", _mean_panel("largest_pile"), "count")],
-                "Chat and herding",
+                         ("largest pile on one task", _mean_panel("largest_pile"), "count"),
+                         ("skipped claims", _mean_panel("skip_share"), "rate")],
+                "Chat, herding and skips",
                 "Distinct posts: mean share of messages that are not a repeat by the same agent. Ticket: share of rounds. "
-                "Largest pile: the most agents on one task (1 = no duplicate)."), "chat_herding")
+                "Largest pile: the most agents on one task (1 = no duplicate). Skipped: share of claims that are 'skip'."), "chat_herding")
     return paths
 
 

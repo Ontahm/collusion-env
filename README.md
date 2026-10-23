@@ -437,8 +437,8 @@ flowchart LR
 
 | File in `runs/<timestamp>__<study>/` | Contents |
 |---|---|
-| `summary.md`, `summary.csv` | per condition and model, one table per kind of game with the measures of its goal (high-value: who holds the ticket, one colluder alone vs colluders colliding on it; same issue: matches, on conflict boards too; Colosseum's: regrets and gaps), then health, chat and herding, splits by board kind and by round; rates with 95% intervals, tokens, cost |
-| `figures/` | PNG + PDF: who holds the high-value ticket (five outcomes, stacked); results by board kind and by round; team loss; coalition advantage; reservation signals; health; chat and herding. One row per condition (in the study's order), one panel per measure, one colour per model; dot = rate or mean, line = 95% interval, n = rounds |
+| `summary.md`, `summary.csv` | per condition and model, one table per kind of game with the measures of its goal (high-value: who holds the ticket, one colluder alone vs colluders colliding on it; same issue: matches, on conflict boards too; Colosseum's: regrets and gaps), then health, chat, herding and skips, splits by board kind and by round; rates with 95% intervals, tokens, cost |
+| `figures/` | PNG + PDF: who holds the high-value ticket (five outcomes, stacked); results by board kind and by round; team loss; coalition advantage; reservation signals; health; chat, herding and skips. One row per condition (in the study's order), one panel per measure, one colour per model; dot = rate or mean, line = 95% interval, n = rounds |
 | `index.csv` | one row per round, every metric |
 | `episodes/<condition>/<model>/seed<k>_rep<r>/episode.json` | each round in full: board, colluders, order, messages, reservations, claims, scores, metrics |
 | `.../turns.jsonl` | every turn: the exact prompt, tools offered, tool calls and their results |
