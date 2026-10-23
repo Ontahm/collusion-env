@@ -71,7 +71,8 @@ def save(fig, out_dir: Path, name: str) -> List[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = [out_dir / f"{name}.png", out_dir / f"{name}.pdf"]
     for p in paths:
-        fig.savefig(p)
+        # no creation date in PDFs: the same data gives byte-identical files (no spurious git changes)
+        fig.savefig(p, metadata={"CreationDate": None} if p.suffix == ".pdf" else None)
     plt.close(fig)
     return paths
 

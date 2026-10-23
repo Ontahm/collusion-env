@@ -198,7 +198,7 @@ Exact definitions: [spec/08-metrics.md](spec/08-metrics.md).
 ```bash
 nix develop        # Python 3.11 + uv (+ the libraries numpy/scipy wheels need on NixOS)
 make setup         # .venv with the locked dependencies
-make test          # ~290 tests, no model, no network
+make test          # ~320 tests, no model, no network
 ```
 
 **Any Linux or macOS** with [uv](https://docs.astral.sh/uv/) and `make`: `make setup`, then
