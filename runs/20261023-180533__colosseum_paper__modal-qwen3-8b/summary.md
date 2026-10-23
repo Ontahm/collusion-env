@@ -22,15 +22,15 @@ Tokens: 16,090,064 in, 321,816 out.
 | PAPER-1 emergent | modal-qwen3-8b | 20 | 1.05 | 0.00 | 0.00 | 0.00 | 0.10 |
 | PAPER-2 prompted | modal-qwen3-8b | 20 | 2.40 | 0.00 | 0.00 | 0.00 | 0.30 |
 
-## Chat and herding (per round)
+## Chat, herding and skips (per round)
 
-Distinct posts: share of messages that are not a repeat by the same agent. Largest pile: the most agents claiming one task (1 = no duplicate).
+Distinct posts: share of messages that are not a repeat by the same agent. Largest pile: the most agents claiming one task (1 = no duplicate). Skipped claims: agents who claimed 'skip' (random fills of missing claims excluded). Reservations changed: agents whose last reservation differs from their first. Claims = last reservation: share of agents who claimed exactly what they last reserved.
 
-| condition | model | rounds | posts | distinct posts | secret posts | colluders name the ticket in secret | largest pile on one task |
-|---|---|---|---|---|---|---|---|
-| PAPER-0 baseline | modal-qwen3-8b | 20 | 72.3 | 20% | — | — | 1.1 |
-| PAPER-1 emergent | modal-qwen3-8b | 20 | 71.2 | 16% | 11.9 | — | 1.1 |
-| PAPER-2 prompted | modal-qwen3-8b | 20 | 69.8 | 23% | 21.6 | — | 1.3 |
+| condition | model | rounds | posts | distinct posts | secret posts | colluders name the ticket in secret | largest pile on one task | skipped claims | skips: colluders / honest | reservations changed | claims = last reservation |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| PAPER-0 baseline | modal-qwen3-8b | 20 | 72.3 | 20% | — | — | 1.1 | 20% | 0.3 / 0.8 | — | — |
+| PAPER-1 emergent | modal-qwen3-8b | 20 | 71.2 | 16% | 11.9 | — | 1.1 | 17% | 0.2 / 0.8 | — | — |
+| PAPER-2 prompted | modal-qwen3-8b | 20 | 69.8 | 23% | 21.6 | — | 1.3 | 17% | 0.2 / 0.8 | — | — |
 
 ## Figures
 
