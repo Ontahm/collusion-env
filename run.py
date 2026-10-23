@@ -39,6 +39,8 @@ from importlib import metadata
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import httpx
+
 from agents import load_model
 from agents.llm import ChatClient, FatalModelError, LLMAgent, ModelConfig
 from agents.scripted import ScriptedAgent
@@ -106,6 +108,25 @@ def load_env_file(path: Path = ROOT / ".env") -> None:
 
 def is_local(model: ModelConfig) -> bool:
     return any(h in model.base_url for h in ("://127.0.0.1", "://localhost", "://0.0.0.0", "://[::1]"))
+
+
+async def local_model_problem(client: ChatClient) -> Optional[str]:
+    """Why a local model cannot be used, or None. A llama-server answers whatever `model` a request
+    names, so a config pointing at the wrong server would run silently under the wrong label:
+    check that the server lists the config's model before any episode."""
+    cfg = client.config
+    try:
+        r = await client.http.get("/models", timeout=10)
+    except httpx.HTTPError as exc:
+        return f"cannot reach {cfg.base_url} ({type(exc).__name__}); is the local server running?"
+    try:
+        served = [m.get("id") for m in (r.json().get("data") or [])] if r.status_code == 200 else []
+    except ValueError:
+        served = []
+    if served and cfg.model not in served:
+        return (f"the server at {cfg.base_url} serves {served}, not {cfg.model!r}: start the matching server "
+                f"(e.g. make local-server-abliterated) or fix `model` in the config")
+    return None
 
 
 def provenance(local: bool = False) -> Dict[str, Any]:
@@ -226,17 +247,21 @@ def describe(jobs: List[Job]) -> str:
     return "\n".join(lines)
 
 
+def is_complete(job: Job, run_dir: Path) -> bool:
+    """The episode already finished in this run folder (resume)."""
+    done = run_dir / job.folder / "episode.json"
+    try:
+        return done.exists() and json.loads(done.read_text()).get("status") == "complete"
+    except json.JSONDecodeError:
+        return False
+
+
 async def run_job(job: Job, run_dir: Path, clients: Dict[str, ChatClient], index_lock: asyncio.Lock,
                   log: RunLogger) -> Tuple[str, int]:
     """Play one episode and write its files. Returns (status, rounds played)."""
     folder = run_dir / job.folder
-    done = folder / "episode.json"
-    if done.exists():
-        try:
-            if json.loads(done.read_text()).get("status") == "complete":
-                return "skipped", 0
-        except json.JSONDecodeError:
-            pass
+    if is_complete(job, run_dir):
+        return "skipped", 0
     folder.mkdir(parents=True, exist_ok=True)
     turns_f = (folder / "turns.jsonl").open("w")
     calls_f = (folder / "calls.jsonl").open("w")
@@ -296,7 +321,7 @@ async def run_job(job: Job, run_dir: Path, clients: Dict[str, ChatClient], index
         row = index_row(job.condition, job.model.label, job.seed, job.replication, record, m)
         row["cost_usd"] = cost(job.model, row["prompt_tokens"], row["completion_tokens"])
         rows.append(row)
-    done.write_text(json.dumps({"status": status, "error": error, "condition": job.condition,
+    (folder / "episode.json").write_text(json.dumps({"status": status, "error": error, "condition": job.condition,
                                 "model": to_plain(job.model), "seed": job.seed, "replication": job.replication,
                                 "seconds": time.time() - started, "game": to_plain(job.game), "rounds": rounds,
                                 "index_rows": rows}, indent=1, default=str))
@@ -360,11 +385,20 @@ async def run_all(jobs: List[Job], run_dir: Path, concurrency: int, log: Optiona
     lock = asyncio.Lock()
     counts: Dict[str, int] = {}
     dead: Dict[str, str] = {}                          # model label -> fatal error: its remaining episodes are skipped
+    pending = {j.model.label for j in jobs if not is_complete(j, run_dir)}
+    for label, client in clients.items():
+        if label in pending and is_local(client.config):
+            problem = await local_model_problem(client)
+            if problem:
+                dead[label] = problem
+                log.error(f"model {label!r} not run: {problem}")
     started = time.time()
 
     async def one(job: Job) -> None:
         async with sem:
-            if job.model.label in dead:
+            if is_complete(job, run_dir):
+                status, n_rounds, seconds = "skipped", 0, 0.0
+            elif job.model.label in dead:
                 status, n_rounds, seconds = "not run (model unusable)", 0, 0.0
             else:
                 t0 = time.time()
@@ -474,7 +508,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         except Exception as exc:
             log.error(f"summary failed ({type(exc).__name__}: {exc}); run: python -m analysis.summarize {run_dir}")
     log.close()
-    return 0 if not counts.get("failed") else 3
+    return 0 if not (counts.get("failed") or counts.get("not run (model unusable)")) else 3
 
 
 if __name__ == "__main__":

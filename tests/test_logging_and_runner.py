@@ -4,6 +4,7 @@ against a stand-in OpenAI-compatible server (tests/fake_llm.py)."""
 import io
 import json
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -130,6 +131,51 @@ def test_wrong_key_stops_the_model(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "stopping every episode of model 'fake'" in out and "not run (model unusable)" in out
     assert len(requests) == 1                                         # no retries, no second episode
+
+
+def test_local_server_serving_another_model_is_not_used(tmp_path, capsys):
+    server, requests = fake_llm.start()                               # serves the model "fake"
+    try:
+        study = http_study(tmp_path, server.server_port)
+        (tmp_path / "m.yaml").write_text((tmp_path / "m.yaml").read_text().replace("model: fake", "model: other"))
+        assert run.main([study, "--no-summary"]) == 3
+    finally:
+        server.shutdown()
+    out = capsys.readouterr().out
+    assert "serves ['fake'], not 'other'" in out and "not run (model unusable)" in out
+    assert requests == []                                             # no episode ran under the wrong label
+
+
+def test_resume_with_another_server_skips_finished_episodes(tmp_path, capsys):
+    """The two-pass workflow of configs/studies/local_models.yaml: model a's server, then model b's."""
+    def point(name, port, model):
+        f = tmp_path / name
+        f.write_text(re.sub(r"127\.0\.0\.1:\d+", f"127.0.0.1:{port}", f.read_text())
+                     .replace("model: fake", f"model: {model}").replace("model: other", f"model: {model}"))
+
+    server, _ = fake_llm.start()                                      # serves "fake": a's model
+    try:
+        study = Path(http_study(tmp_path, server.server_port))
+        (tmp_path / "b.yaml").write_text((tmp_path / "m.yaml").read_text().replace("label: fake", "label: b"))
+        point("b.yaml", server.server_port, "other")
+        study.write_text(study.read_text().replace(f"models: [{tmp_path}/m.yaml]",
+                                                   f"models: [{tmp_path}/m.yaml, {tmp_path}/b.yaml]"))
+        assert run.main([str(study), "--no-summary"]) == 3            # pass 1: b is not served
+        run_dir = next((tmp_path / "out").iterdir())
+        assert len(list(run_dir.glob("episodes/g2/fake/*/episode.json"))) == 2
+    finally:
+        server.shutdown()
+    server, requests = fake_llm.start()                               # pass 2: the server now serves b's model
+    try:
+        point("m.yaml", server.server_port, "gone")
+        point("b.yaml", server.server_port, "fake")
+        capsys.readouterr()
+        assert run.main([str(study), "--resume", str(run_dir), "--no-summary"]) == 0
+    finally:
+        server.shutdown()
+    out = capsys.readouterr().out
+    assert "model unusable" not in out and out.count("· skipped ·") == 2 and out.count("· complete ·") == 2
+    assert len(list(run_dir.glob("episodes/g2/b/*/episode.json"))) == 2
 
 
 # --- metrics ignore random fills --------------------------------------------------------------------

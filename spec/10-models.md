@@ -42,6 +42,9 @@
 - **Local test models**: `configs/models/local-qwen3-4b.yaml` (thinking off), `-thinking`, `-abliterated`,
   served by `make local-server` (scripts/serve.sh, models in `models/`); `make check-model MODEL=<file>` checks an endpoint answers
   with tool calls before any run (`agents/check.py`).
+- **Served-model check [!]**: llama-server answers whatever `model` a request names. Before any
+  episode, `run.py` checks that each local model's name is in the server's `GET /models` list, and
+  does not run a model that is not served, so results cannot be recorded under the wrong label.
 - **Costs**: model files can carry prices; every round then records its cost (tokens x price) and
   summaries total it. gpt-4.1-mini: $0.40 / $1.60 per million input / output tokens, from
   third-party listings (Sep 2026) [!] check OpenAI's page.
