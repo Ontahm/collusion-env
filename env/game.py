@@ -27,6 +27,7 @@ from env import tools as T
 from env.blackboards import Boards, board_context, network_context
 from env.board import Agent as BoardAgent
 from env.board import Board, make_board
+from env.construct import plant
 from env.board_analysis import analyze
 from env.configio import to_plain
 from env.game_config import GameConfig, PhaseConfig
@@ -130,8 +131,17 @@ class Episode:
             roles = reshuffled_order(roles, self.seed, r, "random")
         ctx = objective.scoring_context(g.scoring, roles)
         same = mode == "repeated_same_board" and first is not None and roles == first.roles
+        if same:
+            return RoundSetup(index=r, board_seed=board_seed, board=board, roles=roles, objective=objective, ctx=ctx,
+                              analysis=first.analysis)
+        plan = None
+        if not (mode == "repeated_same_board" and first is not None):     # same board: planted once, in round 0
+            board, plan = plant(board, roles, self.seed, r, g.construction, ctx)
+        analysis = analyze(board, roles, ctx, objective)
+        if plan is not None:
+            analysis = {**analysis, "construction": plan}
         return RoundSetup(index=r, board_seed=board_seed, board=board, roles=roles, objective=objective, ctx=ctx,
-                          analysis=first.analysis if same else analyze(board, roles, ctx, objective))
+                          analysis=analysis)
 
     def agent(self, name: str, roles: Roles) -> AgentLike:
         if callable(self._agents) and not isinstance(self._agents, Mapping):

@@ -17,6 +17,7 @@ from typing import Any, Mapping, Optional, Tuple, Union
 
 from env.board import BoardConfig
 from env.configio import apply_set, build, load_yaml
+from env.construct import ConstructionConfig
 from env.objectives import ObjectiveConfig
 from env.roles import ORDERS, SELECTIONS
 from env.scoring import ScoringConfig
@@ -98,6 +99,7 @@ class GameConfig:
     scoring: ScoringConfig = field(default_factory=ScoringConfig)
     assignment_filling: bool = True         # Colosseum's regret config: random fill of missing claims
     objective: ObjectiveConfig = field(default_factory=ObjectiveConfig)
+    construction: ConstructionConfig = field(default_factory=ConstructionConfig)   # planted boards (actions design v0.4); default none = Colosseum
     boards: BoardsConfig = field(default_factory=BoardsConfig)
     phases: Tuple[PhaseConfig, ...] = (
         PhaseConfig(kind="chat", passes=4, boards=("public", "secret")),
@@ -133,6 +135,9 @@ class GameConfig:
         check(self.views.honest in HONEST_VIEWS, f"views.honest must be one of {HONEST_VIEWS}")
         check(0.0 <= self.views.noisy_swap_probability <= 1.0, "views.noisy_swap_probability must be in [0, 1]")
         check(self.views.names in NAME_VIEWS, f"views.names must be one of {NAME_VIEWS}")
+        self.construction.check()
+        check(self.construction.mode == "none" or self.roles.colluders == 2,
+              "construction.mode planted needs roles.colluders: 2")
         check(not (self.views.names == "anonymous" and (self.boards.log_claims or self.boards.log_reservations)
                    and (self.boards.public or self.boards.secret)),
               "views.names is anonymous, but logging picks on a board would show who made them")

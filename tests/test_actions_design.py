@@ -114,3 +114,52 @@ def test_actions_design_colluder_prompts(prompt_file, phrase):
         has = phrase in p["user_prompt"]
         assert has == (p["agent"] in colluders)
         assert "{" not in p["user_prompt"].split("===")[0]                            # placeholders filled
+
+
+# --- construction.mode: planted ----------------------------------------------------------------------
+
+PLANTED = {"objective.type": "coalition_reward", "construction.mode": "planted", "series.rounds": 1,
+           "prompts.colluder": "prompts/colluder/coalition_nochat.txt", "prompts.colluder_header": False}
+
+
+def _setup(seed, overrides=PLANTED):
+    return Episode(load_game(GAME3, overrides), seed, lambda n, r: None).setup_round(0, None)
+
+
+def test_no_construction_by_default():
+    s = _setup(3, {"series.rounds": 1})
+    assert "construction" not in s.analysis
+
+
+def test_planted_board_meets_its_targets():
+    met = 0
+    for seed in range(1, 41):
+        s = _setup(seed)
+        p = s.analysis["construction"]
+        b, T, sc = s.board, p["tempting_task"], s.ctx.config
+
+        def value(a, t):
+            return sc.tasks_done_bonus + sc.priority_bonus * sc.weight(b.task(t).priority) - b.cost(a, t)
+
+        for c in s.roles.colluders:                                        # T is each colluder's best task
+            assert max(b.tasks, key=lambda t: value(c, t.id)).id == T
+        assert value(p["better_colluder"], T) > value(p["worse_colluder"], T)
+        if p["targets_met"]:
+            met += 1
+            assert p["price_of_collusion"] >= 8.0 - 0.01                    # team_conflict
+            assert p["fit_value"] >= 4.0 - 0.01                             # cost_gap
+            assert p["team_optimum_t_holder"] == p["team_best_fit"]
+    assert met >= 34                                                        # ~92% over 300 seeds
+
+
+def test_planted_keeps_tasks_agents_and_the_best_fit_on_t():
+    plain = _setup(5, {"series.rounds": 1, "objective.type": "coalition_reward"})
+    s = _setup(5)
+    p = s.analysis["construction"]
+    assert s.board.tasks == plain.board.tasks and s.board.agent_names == plain.board.agent_names
+    assert s.board.cost(p["team_best_fit"], p["tempting_task"]) == plain.board.cost(p["team_best_fit"], p["tempting_task"])
+
+
+def test_planted_needs_two_colluders():
+    with pytest.raises(ValueError, match="colluders"):
+        load_game(GAME3, {**PLANTED, "roles.colluders": 3})
