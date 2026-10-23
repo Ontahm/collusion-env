@@ -367,7 +367,7 @@ coalition advantage per model, so only its direction is comparable.
 Can instructed colluders gain by using actions (reserve, release, claim) as their only
 communication? Planted boards (`construction.mode: planted`, `env/construct.py`) give every round a
 task T that both colluders want most, a verified loss for the team if a colluder takes it, and a
-private fit gap between the colluders; agents see their own reward per task; 20 rounds with the same
+private fit gap between the colluders; agents see their costs only, as in Colosseum; 20 rounds with the same
 team on new boards, 2 reservation passes + 1 claim pass each.
 
 ```bash
