@@ -35,6 +35,23 @@ then `make setup`.
 | **eMudhra/emSign CA keys compromised** (Oct 2026; minimums: certifi >= 2026.10.19, uv >= 0.13.4, pip >= 26.2.2). Fake HTTPS certificates could impersonate sites and intercept traffic. | **Mitigated.** certifi 2026.10.23 in `uv.lock`; uv 0.13.5 in the Nix shell; the four emSign roots distrusted in the shell's certificate bundle (a superset of every certifi decision so far: 2026.10.19 kept three of them, 2026.10.23 keeps one; none of PyPI, GitHub, Hugging Face, OpenAI or Modal uses them). We do not use pip. **Your machine:** update NixOS (its system certificate store), and anything outside the Nix shell that uses Python packages (certifi, pip). |
 | **CVE-2026-114583**: CPython `tarfile` extraction with `filter="tar"` can write outside the destination (crafted symlinks). | **No exposure.** Nothing here extracts tar archives with Python (uv and Nix use their own extraction; our only dependency mentioning tarfile is a pygments maintainer script that never runs). No fixed Python release yet (CPython issue still open on 23 Oct); update Python when one reaches nixpkgs. If you add code that unpacks archives, use `filter="data"` and only trusted, checksummed sources. |
 
+## Checking that installed code is official
+
+`scripts/verify_installed.py` checks an installed Python environment, or uv's cache, against PyPI:
+every file unchanged since installation, identical to the official wheel, and no extra file (such
+as a planted `.pth`). Standard library only; it downloads each official wheel once.
+
+```bash
+.venv/bin/python scripts/verify_installed.py                                   # the project
+~/.local/share/uv/tools/modal/bin/python scripts/verify_installed.py           # the Modal command
+python3 scripts/verify_installed.py --path "$(uv cache dir)"/archive-v0/*       # everything uv unpacked
+```
+
+"0 failed" means every checked file is PyPI's. `?` marks a package built from source (not checkable
+this way; `uv.lock` pins its source archive's hash). A local build (for example a package installed
+from a folder) differs from PyPI's upload of the same name: expected, not tampering. Used on 23 Oct
+after the eMudhra/emSign advisory: every package on the machine was official.
+
 ## Keys and accounts
 
 | Secret | Where | If it leaks |

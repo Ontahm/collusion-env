@@ -71,3 +71,15 @@ def test_pinned_tools_meet_the_advisory_minimums():
     certifi = re.search(r'name = "certifi"\nversion = "([\d.]+)"', lock).group(1)
     assert tuple(int(x) for x in certifi.split(".")) >= (2026, 10, 19)
     assert 'required-version = ">=0.13.4"' in (ROOT / "pyproject.toml").read_text()
+
+
+vspec = importlib.util.spec_from_file_location("verify_installed", ROOT / "scripts" / "verify_installed.py")
+verify_installed = importlib.util.module_from_spec(vspec)
+vspec.loader.exec_module(verify_installed)
+
+
+def test_verify_installed_reads_records_and_hashes_like_pip():
+    """Offline part of scripts/verify_installed.py (the PyPI comparison needs the network)."""
+    rec = verify_installed.record("pkg/__init__.py,sha256=abc,10\npkg-1.0.dist-info/RECORD,,\n")
+    assert rec == {"pkg/__init__.py": "sha256=abc"}                 # RECORD itself has no hash
+    assert verify_installed.b64sha256(b"") == "sha256=47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU"
