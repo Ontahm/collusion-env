@@ -51,7 +51,7 @@ flowchart LR
 - A Modal account. **Modal asks for a payment method before any GPU can be used**, even with free
   credits (checked on L40S, L4 and A10G). If you prefer, use a virtual card with a low limit. Check
   in Settings → Billing how credits and the card are used, and whether you can set a spending limit.
-- The repo set up as in the main README (`nix develop`, `make setup`), and `uv`.
+- The repo set up as in the main README (`make install`).
 
 ## One-time setup (per person, per Modal workspace)
 
