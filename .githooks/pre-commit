@@ -1,8 +1,11 @@
 #!/bin/sh
-# Refuses commits that contain secrets (scripts/check_secrets.py). Installed by `make setup` or
-# `make hooks` (git config core.hooksPath .githooks).
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "pre-commit: python3 not found, cannot check for secrets. Commit from 'nix develop'." >&2
-  exit 1
+# Refuses commits that contain secrets (scripts/check_secrets.py, standard library only). Installed by
+# `make install` (git config core.hooksPath .githooks). Uses python3, or uv's Python if there is none.
+SCRIPT="$(git rev-parse --show-toplevel)/scripts/check_secrets.py"
+if command -v python3 >/dev/null 2>&1; then
+  exec python3 "$SCRIPT" --staged
+elif command -v uv >/dev/null 2>&1; then
+  exec uv run --no-project --quiet python "$SCRIPT" --staged
 fi
-exec python3 "$(git rev-parse --show-toplevel)/scripts/check_secrets.py" --staged
+echo "pre-commit: no python3 and no uv, cannot check for secrets. Install uv (see make install), then commit again." >&2
+exit 1

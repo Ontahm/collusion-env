@@ -194,20 +194,18 @@ Exact definitions: [spec/08-metrics.md](spec/08-metrics.md).
 
 ## 4. Setup
 
-**NixOS / Nix:**
+**Any macOS or Linux** with [uv](https://docs.astral.sh/uv/) and `make`:
 
 ```bash
-nix develop        # Python 3.11 + uv 0.13.5 (+ the libraries numpy/scipy wheels need on NixOS)
-make setup         # .venv with the locked dependencies + the git hook that refuses secrets
-make test          # ~320 tests, no model, no network
+make install       # checks uv (and says how to install or update it), dependencies, git hook, .env
+make test          # ~340 tests, no model, no network
 ```
 
-**Any Linux or macOS** with [uv](https://docs.astral.sh/uv/) >= 0.13.4 and `make`: `make setup`, then
-`make test` (uv fetches Python 3.11+ if needed). Without `make`: `uv sync --locked`, then
-`uv run python -m pytest`.
+uv brings Python 3.11+ by itself. **Nix users:** `nix develop` first (uv 0.13.5, the libraries the
+numpy/scipy wheels need on NixOS, and a safer certificate bundle).
 
-**Keys** (API models only): copy `.env.example` to `.env` (git-ignored), `chmod 600 .env`, and fill in
-`OPENAI_API_KEY`, `MODAL_VLLM_API_KEY` or `TOGETHER_API_KEY`. How keys are protected and what to
+**Keys** (API models only): `make install` creates `.env` (git-ignored, readable by you only) from
+`.env.example`; fill in `OPENAI_API_KEY`, `MODAL_VLLM_API_KEY` or `TOGETHER_API_KEY`. How keys are protected and what to
 do if one leaks: [SECURITY.md](SECURITY.md).
 
 If `make` says `ENV_PY_LD_LIBRARY_PATH is empty`, or Python says `libstdc++.so.6: cannot open
@@ -458,7 +456,7 @@ key is needed to read it.
 
 ```bash
 git pull
-make setup                                         # once (inside nix develop, or any Python 3.11+ with uv)
+make install                                       # once (checks uv, installs everything)
 make runs                                          # what has been run: study, model and where, conditions, progress
 make runs ARGS='-v --grep action_channel'          # details of matching runs
 ```

@@ -25,19 +25,27 @@ help: ## List commands
 
 # On NixOS, numpy/scipy wheels need the libraries `nix develop` puts in ENV_PY_LD_LIBRARY_PATH.
 check-env:
+	@sh scripts/check_uv.sh
 	@if [ -e /etc/NIXOS ] && [ -z "$${ENV_PY_LD_LIBRARY_PATH:-}" ]; then \
 	  echo "ENV_PY_LD_LIBRARY_PATH is empty: this shell predates the flake. Run 'exit', then 'nix develop'."; exit 1; fi
 
-setup: hooks ## Create .venv with the locked dependencies (and install the git hooks)
+.PHONY: install
+install: check-env ## First step, any OS: check uv, install the locked dependencies, the git hook, a private .env
 	uv sync --locked
+	@git config core.hooksPath .githooks && echo "git hook installed: commits are checked for secrets"
+	@[ -f .env ] || { cp .env.example .env && echo "created .env from .env.example: fill in the keys you use"; }
+	@chmod 600 .env
+	@echo "ready. Next: make test (no model, no network), then the README's quick start"
+
+setup: install ## Same as make install
 
 .PHONY: hooks check-secrets
 hooks: ## Install the git hooks: refuse commits that contain secrets (scripts/check_secrets.py)
 	git config core.hooksPath .githooks
 	@echo "git hooks installed (.githooks/): commits are checked for secrets"
 
-check-secrets: ## Check every tracked file for secrets (API keys, tokens, .env values)
-	python3 scripts/check_secrets.py
+check-secrets: check-env ## Check every tracked file for secrets (API keys, tokens, .env values)
+	$(PY) scripts/check_secrets.py
 
 test: check-env ## Run all tests (no model, no network)
 	$(PY) -m pytest

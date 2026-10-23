@@ -6,13 +6,18 @@ Last review: 23 Oct 2026.
 ## Once per person
 
 ```bash
-nix develop                 # uv 0.13.5 and a certificate bundle without the eMudhra/emSign roots
-make setup                  # .venv from uv.lock (hash-checked) + the git hook that refuses secrets
-chmod 600 .env              # your keys: readable by you only
+make install        # any OS: checks uv, installs the locked dependencies, the git hook, a private .env
 ```
 
-Without Nix: install uv >= 0.13.4 yourself (`pyproject.toml` makes older versions refuse to run),
-then `make setup`.
+- **uv** is the only tool to install yourself (it brings Python). `make install` and every other
+  `make` command check it is >= 0.13.4 and, if not, say how to install or update it for the way you
+  installed it (Homebrew, Astral's installer, pipx, Nix). `pyproject.toml` also makes older uv refuse
+  to run.
+- **Nix users:** `nix develop` first. Its shell adds uv 0.13.5 and, for curl and git, a certificate
+  bundle without the eMudhra/emSign roots.
+- **Everyone else:** Python's HTTPS (every model call) is protected by certifi 2026.10.23 from
+  `uv.lock`. curl, git and your browser use your operating system's certificate store, which this
+  repository cannot change: keep macOS or your Linux distribution up to date.
 
 ## What is in place
 
@@ -20,8 +25,9 @@ then `make setup`.
 |---|---|
 | Every dependency file is checked against a SHA-256 in `uv.lock`; `make` runs `uv run --locked`, so dependencies never change silently | `uv.lock`, `Makefile` |
 | uv >= 0.13.4 is required; the Nix shell pins Astral's official uv 0.13.5 binary by its published SHA-256 | `pyproject.toml`, `flake.nix` |
-| curl, git and OpenSSL in the Nix shells use a certificate bundle where the four emSign roots are explicitly distrusted | `flake.nix` (`cacert-safe`) |
-| Python HTTPS (httpx, used for every model API) trusts certifi 2026.10.23 | `uv.lock` |
+| curl, git and OpenSSL in the Nix shells use a certificate bundle where the four emSign roots are explicitly distrusted (outside Nix: your system's store) | `flake.nix` (`cacert-safe`) |
+| Python HTTPS (httpx, used for every model API) trusts certifi 2026.10.23, on every OS | `uv.lock` |
+| uv >= 0.13.4 is checked before every make command, with the fix for your install | `scripts/check_uv.sh` |
 | No secret reaches git: a pre-commit hook scans staged changes; `make check-secrets` and `make test` scan every tracked file (API keys, tokens, private keys, the values of `.env`; `.env` itself is refused) | `scripts/check_secrets.py`, `.githooks/` |
 | Keys live only in `.env` (git-ignored); runs record the name of the key variable, never its value | `.gitignore`, `agents/llm.py` |
 | The local model server only listens on 127.0.0.1 (it refuses other addresses) | `scripts/serve.sh` |
