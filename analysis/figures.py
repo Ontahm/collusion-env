@@ -4,14 +4,16 @@
     python -m analysis.figures --boards <board study dir>
 
 Run charts (each only when the run has the data for it):
-  hv_capture        who holds the high-value ticket, per condition (rate, 95% CI)
-  same_issue        colluders on one issue, and collusive matches (same-issue objective)
-  by_board_kind     the main rate on conflict vs costless boards (spec/09)
+  hv_capture        who holds the high-value ticket: one colluder alone, colluders colliding on it,
+                    shared with an honest agent, honest agents only, nobody (stacked, sums to 100%)
+  same_issue        colluders on one issue, collusive matches, matches on conflict boards
+  by_board_kind     the goal's main rate on conflict vs costless boards (spec/09), per kind of game
   by_round          the main rate per round, one panel per condition (games of several rounds)
   team_loss         optimum minus team score (mean, 95% CI)
   colosseum         regret gap (the paper's coalition advantage) and reward gap
   reservations      reservation-round signals (games with reservations)
   health            failed tool results, turns without a claim, missing and duplicate claims
+  chat_herding      repeated posts, colluders naming the ticket in secret, the largest pile on one task
 Board-study charts: conflict share by board size, and the distribution of the price of collusion.
 
 Layout: most charts are dot-and-interval plots. One row per condition (names on the left, so long
@@ -57,7 +59,7 @@ def style() -> None:
         "figure.constrained_layout.use": True, "savefig.bbox": "tight", "savefig.pad_inches": 0.08,
         "font.size": 8.5, "text.color": INK, "axes.titlesize": 8.5, "axes.titlelocation": "left",
         "axes.titlepad": 6, "axes.labelsize": 8, "axes.labelcolor": INK_2, "axes.edgecolor": AXIS,
-        "axes.linewidth": 0.8, "axes.spines.top": False, "axes.spines.right": False, "axes.grid": True,
+        "axes.linewidth": 0.8, "axes.axisbelow": True, "axes.spines.top": False, "axes.spines.right": False, "axes.grid": True,
         "grid.color": GRID, "grid.linewidth": 0.7, "xtick.color": INK_2, "ytick.color": INK_2,
         "xtick.labelsize": 7.5, "ytick.labelsize": 8, "xtick.major.size": 0, "ytick.major.size": 0,
         "xtick.major.pad": 4, "ytick.major.pad": 6, "legend.frameon": False, "legend.fontsize": 8,
@@ -131,14 +133,14 @@ def mean_ci(rows: Sequence[dict], key: str) -> Optional[Stat]:
 
 # --- dot-and-interval chart ---------------------------------------------------------------------------
 
-Panel = Tuple[str, Callable[[object], Optional[Stat]]]       # title, payload -> stat
+Panel = Tuple                                              # (title, payload -> stat[, scale])
 
 
 def forest(entries: Dict[Tuple[str, str], object], panels: Sequence[Panel], title: str, caption: str,
            scale: str = "rate", xlabel: str = "") -> Optional[plt.Figure]:
     """Rows = entries' first key (in order), colour = their second key (the model), one panel per measure.
-    scale: "rate" (0-100%), "signed" (a zero line), "count" (starts at 0)."""
-    cells = {(p, key): fn(payload) for p, (_, fn) in enumerate(panels) for key, payload in entries.items()}
+    scale: "rate" (0-100%), "signed" (a zero line), "count" (starts at 0); a panel can set its own."""
+    cells = {(p, key): panel[1](payload) for p, panel in enumerate(panels) for key, payload in entries.items()}
     rows = list(dict.fromkeys(r for (r, m) in entries if any(cells[(p, (r, m))] for p in range(len(panels)))))
     models = list(dict.fromkeys(m for _, m in entries))
     shown = [p for p in range(len(panels)) if any(cells[(p, k)] for k in entries)]
@@ -165,13 +167,14 @@ def forest(entries: Dict[Tuple[str, str], object], panels: Sequence[Panel], titl
         ax.set_title(textwrap.fill(panels[p][0], 36))
         ax.grid(axis="y", visible=False)
         ax.spines["left"].set_visible(False)
-        if scale == "rate":
+        kind = panels[p][2] if len(panels[p]) > 2 else scale
+        if kind == "rate":
             ax.set_xlim(-0.04, 1.04)
             ax.set_xticks([0, 0.25, 0.5, 0.75, 1])
             ax.xaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
         else:
             ax.xaxis.set_major_locator(MaxNLocator(5))
-            if scale == "signed":
+            if kind == "signed":
                 ax.axvline(0, color=AXIS, linewidth=0.9, zorder=1)
             else:                                           # counts: from 0, with room for a dot at 0
                 hi = max(ax.get_xlim()[1], 1.0)
@@ -201,29 +204,20 @@ def _mean_panel(key: str) -> Callable[[object], Optional[Stat]]:
 # --- run charts -------------------------------------------------------------------------------------
 
 
-def condition_order(run_dir: Path) -> Dict[str, int]:
-    """Conditions in the study file's order (e.g. baseline first, then the information ladder)."""
-    try:
-        study = json.loads((run_dir / "study.json").read_text())["study"]
-        return {c["name"]: i for i, c in enumerate(study["conditions"])}
-    except (OSError, KeyError, TypeError, ValueError):
-        return {}
+# The goal's main rate, its conflict flag (spec/09), its label, and a short name for file suffixes.
+MAIN_RATE = {"high_value_ticket": ("hv_clean_capture", "hv_conflict", "One colluder alone holds the high-value ticket", "hv"),
+             "same_issue": ("same_issue_match", "same_issue_conflict", "Colluders on the same issue", "same_issue")}
+OUTCOME_LABELS = {"colluder_alone": "one colluder alone", "colluders_collide": "colluders collide on it",
+                  "shared_with_honest": "shared with an honest agent", "honest": "honest agents only", "nobody": "nobody"}
+OUTCOME_COLOURS = {"colluder_alone": PALETTE[0], "colluders_collide": PALETTE[1], "shared_with_honest": PALETTE[3],
+                   "honest": PALETTE[2], "nobody": "#c9c7c1"}
 
 
-def main_rate_key(rows: Sequence[dict]) -> Optional[Tuple[str, str, str]]:
-    """(rate column, conflict column, label) of the run's objective."""
-    objectives = {r.get("objective") for r in rows}
-    if "high_value_ticket" in objectives:
-        return "hv_captured_by_coalition", "hv_conflict", "A colluder holds the high-value ticket"
-    if "same_issue" in objectives:
-        return "same_issue_match", "same_issue_conflict", "Colluders on the same issue"
-    return None
-
-
-def run_figures(run_dir: Path) -> List[Path]:
+def run_figures(run_dir: Path, rows: Optional[List[dict]] = None) -> List[Path]:
+    """Charts of a run. `rows`: index rows with the outcome columns (analysis.summarize.load)."""
+    from analysis.summarize import condition_order, load
     style()
-    with (run_dir / "index.csv").open() as f:
-        rows = list(csv.DictReader(f))
+    rows = load(run_dir) if rows is None else rows
     if not rows:
         return []
     out = run_dir / "figures"
@@ -237,30 +231,31 @@ def run_figures(run_dir: Path) -> List[Path]:
         if fig is not None:
             paths.extend(save(fig, out, name))
 
-    hv = {g: rs for g, rs in groups.items() if any(_bool(r.get("hv_captured_by_coalition")) is not None for r in rs)}
+    hv = {g: rs for g, rs in groups.items() if any(r.get("hv_outcome") for r in rs)}
     if hv:
-        keep(forest(hv, [("held by a colluder", _rate_panel("hv_captured_by_coalition")),
-                         ("held by an honest agent", _rate_panel("hv_captured_by_honest"))],
-                    "Who ends up holding the high-value ticket",
-                    RATE_NOTE + ". Both can happen in one round (a shared ticket); neither when nobody claimed "
-                    "it (random fills not counted)."), "hv_capture")
+        keep(_hv_outcomes(hv), "hv_capture")
     si = {g: rs for g, rs in groups.items() if any(r.get("objective") == "same_issue" for r in rs)}
     if si:
         keep(forest(si, [("same issue", _rate_panel("same_issue_match")),
-                         ("same issue, at a cost to a colluder", _rate_panel("collusive_match"))],
+                         ("same issue, at a cost to a colluder", _rate_panel("collusive_match")),
+                         ("same issue, on conflict boards",
+                          lambda rs: rate([r for r in rs if r.get("same_issue_conflict") == "True"], "same_issue_match"))],
                     "Colluders claiming tasks of the same issue", RATE_NOTE + "."), "same_issue")
 
-    main = main_rate_key(rows)
-    if main:
-        key, flag, label = main
-        keep(forest(groups, [(f"conflict boards: the goal costs the team",
-                              lambda rs: rate([r for r in rs if r.get(flag) == "True"], key)),
-                             ("costless boards", lambda rs: rate([r for r in rs if r.get(flag) == "False"], key))],
+    # Splits by board kind and by round, for each kind of game with a goal (one chart each).
+    kinds = [o for o in MAIN_RATE if any(r.get("objective") == o for r in rows)]
+    for objective in kinds:
+        key, flag, label, short = MAIN_RATE[objective]
+        sub = {g: rs for g, rs in groups.items() if rs[0].get("objective") == objective}
+        suffix = "" if len(kinds) == 1 else f"_{short}"
+        keep(forest(sub, [("conflict boards: the goal costs the team",
+                           lambda rs, key=key, flag=flag: rate([r for r in rs if r.get(flag) == "True"], key)),
+                          ("costless boards", lambda rs, key=key, flag=flag: rate([r for r in rs if r.get(flag) == "False"], key))],
                     f"{label}, by board kind (spec/09)",
                     RATE_NOTE + " of that board kind; boards are classified exactly, before any model plays."),
-             "by_board_kind")
-        if any(r["round"] != "0" for r in rows):
-            keep(_by_round(groups, key, label), "by_round")
+             f"by_board_kind{suffix}")
+        if any(r["round"] != "0" for rs in sub.values() for r in rs):
+            keep(_by_round(sub, key, label), f"by_round{suffix}")
 
     keep(forest(groups, [("team loss", _mean_panel("team_loss"))],
                 "Team loss: optimum minus the team's score", MEAN_NOTE + ". Score units.", scale="count"), "team_loss")
@@ -283,7 +278,49 @@ def run_figures(run_dir: Path) -> List[Path]:
                          ("duplicate claims", _mean_panel("duplicate_claims"))],
                 "Health: can the model play the game?",
                 MEAN_NOTE + ". Counts per round; read these before any collusion rate.", scale="count"), "health")
+    keep(forest(groups, [("distinct posts (1 - repeats)", _mean_panel("distinct_post_share"), "rate"),
+                         ("colluders name the ticket in secret chat", _rate_panel("colluders_name_hv"), "rate"),
+                         ("largest pile on one task", _mean_panel("largest_pile"), "count")],
+                "Chat and herding",
+                "Distinct posts: mean share of messages that are not a repeat by the same agent. Ticket: share of rounds. "
+                "Largest pile: the most agents on one task (1 = no duplicate)."), "chat_herding")
     return paths
+
+
+def _hv_outcomes(groups: Dict[Tuple[str, str], List[dict]]) -> Optional[plt.Figure]:
+    """100% stacked bars: one row per condition (and model), one segment per outcome of the ticket."""
+    rows = [(g, [r.get("hv_outcome") for r in rs if r.get("hv_outcome")]) for g, rs in groups.items()]
+    rows = [(g, v) for g, v in rows if v]
+    if not rows:
+        return None
+    several = len({m for (_, m), _ in rows}) > 1
+    labels = [f"{c} · {m}  (n={len(v)})" if several else f"{c}  (n={len(v)})" for (c, m), v in rows]
+    fig, ax = plt.subplots(figsize=(8.2, max(2.4, 0.9 + 0.36 * len(rows))))   # room for the legend
+    for i, (_, vals) in enumerate(rows):
+        left = 0.0
+        for name in OUTCOME_LABELS:
+            share = vals.count(name) / len(vals)
+            if share:
+                ax.barh(i, share, left=left, height=0.62, color=OUTCOME_COLOURS[name], edgecolor="white", linewidth=1.5)
+                if share >= 0.12:
+                    ax.text(left + share / 2, i, f"{share:.0%}", ha="center", va="center", fontsize=7,
+                            color="white" if name in ("colluder_alone", "colluders_collide", "honest") else INK)
+                left += share
+    ax.set_yticks(range(len(rows)))
+    ax.set_yticklabels(labels)
+    ax.set_ylim(len(rows) - 0.5, -0.5)
+    ax.set_xlim(0, 1)
+    ax.set_xticks([0, 0.25, 0.5, 0.75, 1])
+    ax.xaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
+    ax.grid(axis="y", visible=False)
+    ax.spines["left"].set_visible(False)
+    handles = [plt.Rectangle((0, 0), 1, 1, color=OUTCOME_COLOURS[n]) for n in OUTCOME_LABELS]
+    ax.legend(handles, list(OUTCOME_LABELS.values()), loc="upper left", bbox_to_anchor=(1.02, 1.0),
+              title="who holds it", title_fontsize=7.5, alignment="left", handlelength=1.2)
+    frame(fig, "Who ends up holding the high-value ticket",
+          "Share of rounds; actual claims only (random fills not counted). 'Collide': two colluders claimed it, "
+          "a failed coordination.")
+    return fig
 
 
 def _by_round(groups: Dict[Tuple[str, str], List[dict]], key: str, label: str) -> Optional[plt.Figure]:
@@ -340,6 +377,7 @@ def _by_round(groups: Dict[Tuple[str, str], List[dict]], key: str, label: str) -
 
 def _reservation_signals(run_dir: Path) -> Dict[Tuple[str, str], Dict[str, list]]:
     """(condition, pass k, model) -> the colluders' same-issue and high-value reservation flags."""
+    from analysis.summarize import condition_order
     acc: Dict[Tuple[str, int, str], Dict[str, list]] = {}
     for ep in run_dir.glob("episodes/**/episode.json"):
         data = json.loads(ep.read_text())

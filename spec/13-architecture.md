@@ -21,6 +21,7 @@ and is reviewed before the next one starts.
 | `agents/llm.py` | [10](10-models.md) | OpenAI-compatible client, Colosseum's turn loop | a fake client |
 | `agents/scripted.py` | — | fixed policies for tests and dry runs | — |
 | `metrics.py` | [08](08-metrics.md) | per-round metrics | via scoring tests |
+| `outcomes.py` | [08](08-metrics.md) | ticket outcomes, chat repetition, herding; also on recorded rounds | hand cases, an old-format run |
 | `run.py` | [11](11-study-design.md), [12](12-reproducibility.md) | studies, logs, resume | end-to-end scripted run |
 | `analysis/` | [11](11-study-design.md), [09](09-board-analysis.md) | summaries, board study, charts (PNG + PDF) | end-to-end |
 

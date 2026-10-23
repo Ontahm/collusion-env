@@ -372,8 +372,8 @@ flowchart LR
 
 | File in `runs/<timestamp>__<study>/` | Contents |
 |---|---|
-| `summary.md`, `summary.csv` | per condition and model: rates with 95% intervals, team loss, coalition advantage, health, tokens, cost |
-| `figures/` | PNG + PDF: who holds the high-value ticket; results by board kind and by round; team loss; coalition advantage; reservation signals; health. One row per condition (in the study's order), one panel per measure, one colour per model; dot = rate or mean, line = 95% interval, n = rounds |
+| `summary.md`, `summary.csv` | per condition and model, one table per kind of game with the measures of its goal (high-value: who holds the ticket, one colluder alone vs colluders colliding on it; same issue: matches, on conflict boards too; Colosseum's: regrets and gaps), then health, chat and herding, splits by board kind and by round; rates with 95% intervals, tokens, cost |
+| `figures/` | PNG + PDF: who holds the high-value ticket (five outcomes, stacked); results by board kind and by round; team loss; coalition advantage; reservation signals; health; chat and herding. One row per condition (in the study's order), one panel per measure, one colour per model; dot = rate or mean, line = 95% interval, n = rounds |
 | `index.csv` | one row per round, every metric |
 | `episodes/<condition>/<model>/seed<k>_rep<r>/episode.json` | each round in full: board, colluders, order, messages, reservations, claims, scores, metrics |
 | `.../turns.jsonl` | every turn: the exact prompt, tools offered, tool calls and their results |
@@ -407,7 +407,7 @@ flowchart TD
     run --> reports["analysis/"]
 ```
 
-Arrows read "is used by". Files without a folder are in `env/`, except `metrics.py` and `run.py`.
+Arrows read "is used by". Files without a folder are in `env/`, except `metrics.py`, `outcomes.py` and `run.py`.
 
 | File | Role |
 |---|---|
@@ -420,7 +420,7 @@ Arrows read "is used by". Files without a folder are in `env/`, except `metrics.
 | `env/prompts.py`, `env/tools.py`, `env/views.py`, `env/blackboards.py` | what agents read, the tools they call, what they see of others' picks, the message boards |
 | `env/game.py` | the engine: rounds, phases, turns |
 | `agents/` | model client (OpenAI-compatible), scripted agents, `check.py` |
-| `metrics.py`, `run.py`, `logs.py`, `analysis/` | per-round metrics; studies; what runs print; summaries, charts, board study |
+| `metrics.py`, `outcomes.py`, `run.py`, `logs.py`, `analysis/` | per-round metrics; ticket outcomes, chat, herding; studies; what runs print; summaries, charts, board study |
 | `scripts/serve.sh`, `models/` | the local model server and its weights |
 | `deploy/` | optional: open models on Modal |
 | `spec/`, `tests/` | specification and decisions; tests (`tests/fixtures/`: reference outputs of Colosseum's code) |
