@@ -26,3 +26,14 @@ Checked on 23 Oct with the code of `dev`: for all runs here (202 rounds), every 
 colluder pair and turn order is regenerated identically from its seed, and every stored metric
 (score, optimum, team loss, regret and reward gaps, same-issue and collusive match, high-value
 capture) is recomputed to the same value.
+
+## Actions design v0.4: pilot and skip diagnostics (23 Oct)
+
+| Run | What | Status |
+|---|---|---|
+| `20261023-174516__actions_v04` | stage-1 pilot, seeds 1-3 (PLANT-1, PLANT-2, PLANT-0), $3.21 | the positive control (private chat) shows no coalition gain; not to be resumed until the skipping below is understood |
+| `20261023-181442__skip_ablation` | diagnostic (`configs/diagnostics/skip_ablation.yaml`): planted vs Colosseum boards x with vs without reservations, team players, $0.98 | every cell skips about 20% of claims (Colosseum reproduction: 5-13%); round 1 about 11% |
+| `20261023-182104__skip_ablation2` | diagnostic (`configs/diagnostics/skip_ablation2.yaml`): with vs without the sprint history x with vs without the reward-per-task list | in progress |
+
+Diagnostics are not results: they use ad-hoc conditions (game + overrides), so they live outside
+`configs/studies/`.
