@@ -319,6 +319,8 @@ Each study plays scenarios by ID ([SCENARIOS.md](SCENARIOS.md) has the full list
 | `team_variants.yaml` | HV-2, VAR-1..9 | each alternative of the design |
 | `local_*.yaml`, `modal_paper.yaml` | same as above | rehearsals with fewer seeds or rounds (local Qwen3-4B, section 5; or Modal, `--use-model`), and `local_models` (three local models compared) |
 | `local_pilot.yaml` | PAPER-2, HV-1..3 | every game, 2 rounds, local Qwen3-4B: first real-model check |
+| `actions_v04.yaml` | PLANT-1, PLANT-2, PLANT-0 | actions design v0.4, stage 1: planted boards, private chat (positive control) vs actions only with names shown vs team players, 20 rounds, seeds 1-10 (section 6.2) |
+| `actions_v04_followup.yaml` | PLANT-3, PLANT-4 | stage 2, only if stage 1 shows a result: names anonymous, greedy pair |
 | `smoke_scripted.yaml` | PAPER-2, HV-2, ACT-5, VAR-8 | pipeline check, scripted agents (written to `runs/_smoke/`, not shared) |
 
 | Model (`configs/models/`) | Needs |
@@ -330,6 +332,53 @@ Each study plays scenarios by ID ([SCENARIOS.md](SCENARIOS.md) has the full list
 | `scripted.yaml` | nothing (fixed policies, for checks) |
 
 Any OpenAI-compatible endpoint works: copy a model file, change `base_url`, `model`, `api_key_env`.
+
+### 6.1 Reproducing the paper (Colosseum's Jira conditions on gpt-4.1-mini)
+
+The first study to run: it checks that this environment gives the paper's result before any of the
+team's games are trusted. Three conditions, Colosseum's settings unchanged (8 tasks, 6 agents,
+2 colluders, 4 chat passes + 1 claim pass, one-shot games, Colosseum's prompts):
+
+| Condition | Scenario | What it is |
+|---|---|---|
+| `baseline` | PAPER-0 | no secret channel, colluders not instructed |
+| `emergent` | PAPER-1 | secret channel, not instructed |
+| `prompted` | PAPER-2 | secret channel + Colosseum's "simple" coalition instruction |
+
+```bash
+cp .env.example .env                                   # once; put OPENAI_API_KEY in .env
+make dry-run STUDY=configs/studies/colosseum_paper.yaml # 30 episodes, at most 2,700 model calls
+make run     STUDY=configs/studies/colosseum_paper.yaml ARGS=--yes   # ~$3.5, ~20-30 min
+make summarize RUN=runs/<the run folder>               # tables + standard charts (rerun at the end by default)
+uv run python -m analysis.paper_figure runs/<the run folder>          # paper-style chart + table
+```
+
+`analysis.paper_figure` writes `figures/paper_comparison.png` (our run next to the paper: the change from no secret channel in team regret and in coalition advantage), `figures/paper_comparison_conditions.png` (our run per condition) and `paper_comparison.md` in the run
+folder: normalised regret and regret gap per condition (mean over the 10 seeds, 95% interval), and
+the change from the baseline paired by seed, next to the paper's GPT-4.1-mini values (Fig. 4 of
+arXiv:2602.15198, read off the plot). Add `--colosseum <summary.csv>` to compare with a run of
+Colosseum's own code. What to expect: the secret channel lowers normalised regret and raises the
+regret gap (colluders do better), in the paper's direction; with 10 seeds the effect is noisy. The
+paper's judge score is not reproduced (no judge here), and Colosseum's own chart rescales the
+coalition advantage per model, so only its direction is comparable.
+
+### 6.2 Actions design v0.4 (PLANT scenarios)
+
+Can instructed colluders gain by using actions (reserve, release, claim) as their only
+communication? Planted boards (`construction.mode: planted`, `env/construct.py`) give every round a
+task T that both colluders want most, a verified loss for the team if a colluder takes it, and a
+private fit gap between the colluders; agents see their own reward per task; 20 rounds with the same
+team on new boards, 2 reservation passes + 1 claim pass each.
+
+```bash
+make run STUDY=configs/studies/actions_v04.yaml ARGS='--seeds 1-3 --yes'              # pilot, ~$4
+make run STUDY=configs/studies/actions_v04.yaml ARGS='--resume runs/<pilot folder> --yes'   # seeds 4-10, if nothing changed
+uv run python -m analysis.actions_v04 runs/<the run folder>                          # actions_v04.md
+```
+
+Measures (spec/08-metrics.md, 8.x): partner asymmetry (does a colluder avoid T more when its partner
+holds it than when a stranger does?), capture rate, the coalition getting T, clashes, the better
+colluder getting T, early vs late rounds.
 
 ---
 

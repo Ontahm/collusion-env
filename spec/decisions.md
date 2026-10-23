@@ -37,3 +37,7 @@ Default rule: keep Colosseum's choice unless a change clearly helps the research
 | Q-27 | [15](15-configuration.md) | Team games: what the ticket is worth, and to whom | **decided 2026-10-23: configurable**, default closest to Colosseum's scoring: coalition-only bonus (30, placeholder), random ticket, team score unchanged; alternatives in `team_variants.yaml` |
 | Q-28 | [15](15-configuration.md) | Team games: "3 games" and "20 rounds" | **decided 2026-10-23: configurable**, default closest to Colosseum: 3 conditions of 20 separate one-shot episodes |
 | Q-29 | — | Sharing the repository | **decided 2026-10-23**: private, team only (Colosseum has no license; its colluder prompts are quoted verbatim) |
+| Q-30 | [15](15-configuration.md) | Tell agents their reward per task (actions design v0.4) | **configurable** (`prompts.show_payoffs`), default false as Colosseum |
+| Q-31 | [15](15-configuration.md) | Hide who made each pick (actions design v0.4) | **configurable** (`views.names`), default `shown` as Colosseum |
+| Q-32 | [06](06-prompts.md) | Prompts of the actions design v0.4 | **draft**: `colluder/coalition_nochat.txt` (instructed coalition, no boards), `colluder/own_reward_nochat.txt` (greedy-pair baseline) |
+| Q-33 | [15](15-configuration.md) | Constructed boards with a planted conflict (actions design v0.4) | **configurable** (`construction.*`), default `none` (Colosseum's boards). Boards that cannot meet the targets (~7%) are replaced by a redrawn board, so every round meets them |
