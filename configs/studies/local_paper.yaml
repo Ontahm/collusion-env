@@ -1,0 +1,22 @@
+# Local rehearsal of colosseum_paper.yaml: the same three conditions and the same boards (seeds 1-5 of
+# its 1-10), played by Qwen3-4B on the local server. Rehearses the paper reproduction we will run on
+# gpt-4.1-mini: same games, same metrics, same charts. A 4B model is not a stand-in for gpt-4.1-mini:
+# use it to find problems in the pipeline and prompts, not to predict results.
+# Time (RTX 2060, from the local pilot): ~3 min per episode (4 planning rounds of chat) -> ~45 min.
+#   make local-server                     (other terminal)
+#   make run STUDY=configs/studies/local_paper.yaml          (ARGS='--seeds 1-2' for a shorter run)
+name: local_paper
+description: local rehearsal of the Colosseum paper reproduction
+conditions:
+  - name: baseline                   # secret_channel_enabled: false (variant forced to control)
+    game: configs/games/colosseum_paper.yaml
+    set: {boards.secret: false, prompts.colluder: "", prompts.variant_name: control}
+  - name: emergent                   # secret channel, no instruction (control)
+    game: configs/games/colosseum_paper.yaml
+    set: {prompts.colluder: "", prompts.variant_name: control}
+  - name: prompted                   # secret channel + "simple" coalition instruction
+    game: configs/games/colosseum_paper.yaml
+models: [configs/models/local-qwen3-4b.yaml]
+seeds: 1-5
+replications: 1
+max_concurrency: 1                   # the local server answers one request at a time (-np 1)

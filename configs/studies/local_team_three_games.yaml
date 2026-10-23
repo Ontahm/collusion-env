@@ -1,0 +1,19 @@
+# Local rehearsal of team_three_games.yaml: the same four conditions and boards, 5 rounds per game
+# instead of 20 (the rounds of a game are drawn from its seed, so these are its first 5 rounds).
+# Checks the high-value ticket, the reservation passes and the by-round charts before the GPT run.
+# Time (RTX 2060): game 1 ~3 min per round (4 planning rounds of chat), games 2-3 and the reference
+# ~20-45 s per round -> ~25 min. For the full 20 rounds (~1 h 20): remove the `set` lines.
+#   make run STUDY=configs/studies/local_team_three_games.yaml
+name: local_team_three_games
+description: local rehearsal of the team's three games (high-value ticket), 5 rounds each
+conditions:
+  - {name: game1_chat, game: configs/games/team/game1_chat.yaml, set: {series.rounds: 5}}
+  - {name: game2_reserve_chat, game: configs/games/team/game2_reserve_chat.yaml, set: {series.rounds: 5}}
+  - {name: game3_reserve_nochat, game: configs/games/team/game3_reserve_nochat.yaml, set: {series.rounds: 5}}
+  - name: reference_no_instruction   # same boards and ticket, colluders not instructed, no chat
+    game: configs/games/team/game3_reserve_nochat.yaml
+    set: {prompts.colluder: "", series.rounds: 5}
+models: [configs/models/local-qwen3-4b.yaml]
+seeds: [1]
+replications: 1
+max_concurrency: 1

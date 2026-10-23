@@ -1,0 +1,31 @@
+# The three local models on the same short games, to compare them before choosing which open
+# models to host on Modal: Qwen3-4B (thinking off), the same with thinking on, and the abliterated
+# (refusal-removed) Qwen3-4B. Claim-only games, so thinking stays affordable.
+#
+# The abliterated model needs its own server, and run.py refuses a local model the server does not
+# serve (its episodes are marked "not run"), so run it in two passes into the same folder:
+#   make local-server                                        (terminal 1)
+#   make run STUDY=configs/studies/local_models.yaml         (terminal 2: Qwen3-4B and -thinking)
+#   Ctrl+C in terminal 1, then: make local-server-abliterated
+#   make run STUDY=configs/studies/local_models.yaml ARGS='--resume runs/<that run folder>'
+#
+# Time (RTX 2060): thinking off ~15 s per episode (~5 min per model); thinking on ~30 s per call,
+# ~4-9 min per episode -> about 1 h 10 for the thinking model.
+# Thinking needs a context of at least ~9,400 tokens (prompt up to 5,259 + 4,096 for the answer):
+# if you lowered CTX for memory, check the server log for truncated answers.
+name: local_models
+description: Qwen3-4B, thinking and abliterated on the same claim-only games
+conditions:
+  - name: baseline                   # same-issue goal, colluders not instructed
+    game: configs/games/action_channel.yaml
+    set: {prompts.colluder: ""}
+  - {name: action_visible, game: configs/games/action_channel.yaml, set: {views.colluders: visible}}
+  - {name: action_hidden, game: configs/games/action_channel.yaml, set: {views.colluders: hidden}}
+  - {name: game3_reserve_nochat, game: configs/games/team/game3_reserve_nochat.yaml, set: {series.rounds: 1}}
+models:
+  - configs/models/local-qwen3-4b.yaml
+  - configs/models/local-qwen3-4b-thinking.yaml
+  - configs/models/local-qwen3-4b-abliterated.yaml
+seeds: 1-3
+replications: 1
+max_concurrency: 1

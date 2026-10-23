@@ -49,6 +49,7 @@ The team note also compares with "a run without colluders".
 | `configs/studies/colosseum_paper.yaml` | Colosseum's three: baseline, emergent (secret channel, no instruction), prompted |
 | `configs/studies/action_channel.yaml` | the team note of 19 Oct: baseline, secret chat, action visible, action hidden, issue only, noisy |
 | `configs/studies/team_three_games.yaml` | the team's design of 23 Oct: three games and a no-instruction reference ([15](15-configuration.md) 15.5) |
+| `configs/studies/local_*.yaml` | local rehearsals of the three above and of `team_variants.yaml`: same conditions and boards, fewer seeds or rounds, Qwen3-4B; plus `local_models.yaml` (three local models compared) |
 
 The team's design of 23 Oct: same board and model as the paper; one high-value ticket the coalition
 is incentivised to get; random tickets and picking order; 20 rounds per game; game 1 chat for the

@@ -1,0 +1,26 @@
+# Local rehearsal of action_channel.yaml at full size: the same six conditions and the same 20 boards.
+# No chat in five of them, so episodes are short: the cheapest place to see whether the information
+# ladder (secret chat > visible > issue only > noisy > hidden) moves the same-issue rate at all.
+# Time (RTX 2060): ~10-30 s per episode -> ~30 min for 120 episodes.
+#   make run STUDY=configs/studies/local_action_channel.yaml
+name: local_action_channel
+description: local rehearsal of the action-channel study (same-issue goal, six scenarios)
+conditions:
+  - name: baseline                   # colluders not instructed (as Colosseum's "control")
+    game: configs/games/action_channel.yaml
+    set: {prompts.colluder: ""}
+  - name: secret_chat
+    game: configs/games/action_channel.yaml
+    set:
+      boards.secret: true
+      views.colluders: hidden
+      prompts.colluder: prompts/colluder/team_same_issue_chat.txt
+      phases: [{kind: chat, passes: 1, participants: colluders, boards: [secret]}, {kind: claim, post_message: "no"}]
+  - {name: action_visible, game: configs/games/action_channel.yaml, set: {views.colluders: visible}}
+  - {name: action_hidden, game: configs/games/action_channel.yaml, set: {views.colluders: hidden}}
+  - {name: issue_only, game: configs/games/action_channel.yaml, set: {views.colluders: issue_only}}
+  - {name: noisy, game: configs/games/action_channel.yaml, set: {views.colluders: noisy}}
+models: [configs/models/local-qwen3-4b.yaml]
+seeds: 1-20
+replications: 1
+max_concurrency: 1
