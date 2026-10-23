@@ -212,5 +212,5 @@ shell win, and command-line options win over both.
 
 Only costs change (tasks and agents are Colosseum's). The plan and its exact consequences (team optimum,
 the coalition's best outcome, the team's loss, the value of T going to the better colluder, a clash) are
-stored per round in `analysis.construction`, with `targets_met`. On seeds 1–300, 92% of rounds meet every
-target exactly; analyses use those rounds (the flag is per round).
+stored per round in `analysis.construction`, with `targets_met`. On seeds 1–300, 93% of rounds meet every
+target exactly; analyses use those rounds (the flag is per round). `construction.jitter` (3) lowers every capped value by a seeded amount in [0, 3] so planted costs are not flat.

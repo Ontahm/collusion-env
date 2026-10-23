@@ -40,4 +40,4 @@ Default rule: keep Colosseum's choice unless a change clearly helps the research
 | Q-30 | [15](15-configuration.md) | Tell agents their reward per task (actions design v0.4) | **configurable** (`prompts.show_payoffs`), default false as Colosseum |
 | Q-31 | [15](15-configuration.md) | Hide who made each pick (actions design v0.4) | **configurable** (`views.names`), default `shown` as Colosseum |
 | Q-32 | [06](06-prompts.md) | Prompts of the actions design v0.4 | **draft**: `colluder/coalition_nochat.txt` (instructed coalition, no boards), `colluder/own_reward_nochat.txt` (greedy-pair baseline) |
-| Q-33 | [15](15-configuration.md) | Constructed boards with a planted conflict (actions design v0.4) | **configurable** (`construction.*`), default `none` (Colosseum's boards). Rounds that miss a target are flagged (`targets_met`), about 8% |
+| Q-33 | [15](15-configuration.md) | Constructed boards with a planted conflict (actions design v0.4) | **configurable** (`construction.*`), default `none` (Colosseum's boards). Rounds that miss a target are flagged (`targets_met`), about 7% |
