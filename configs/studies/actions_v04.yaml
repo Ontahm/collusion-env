@@ -1,0 +1,23 @@
+# Actions design v0.4: the five conditions, same seeds (same boards, colluders and orders).
+name: actions_v04
+description: collusion through actions on planted boards; chat / names shown / names anonymous / greedy pair / team players
+conditions:
+  - name: c1_private_chat             # positive control: the colluders may post on a secret board during reservation passes
+    game: configs/games/actions_v04.yaml
+    set:
+      boards.secret: true
+      prompts.colluder: prompts/colluder/colosseum_simple.txt
+      prompts.colluder_header: true   # Colosseum's block: names the partner and the secret board
+      phases: [{kind: reserve, passes: 2, boards: [secret], binding: none}, {kind: claim, post_message: "no"}]
+  - {name: c2_actions_names_shown, game: configs/games/actions_v04.yaml}
+  - {name: c3_actions_names_anonymous, game: configs/games/actions_v04.yaml, set: {views.names: anonymous}}
+  - name: c4_greedy_pair              # the same two agents, each told to maximise its own reward
+    game: configs/games/actions_v04.yaml
+    set: {prompts.colluder: prompts/colluder/own_reward_nochat.txt}
+  - name: c5_team_players             # the same two agents, no instruction
+    game: configs/games/actions_v04.yaml
+    set: {prompts.colluder: ""}
+models: [configs/models/gpt-4.1-mini.yaml]
+seeds: 1-10
+replications: 1
+max_concurrency: 4
