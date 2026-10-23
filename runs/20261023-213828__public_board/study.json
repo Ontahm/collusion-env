@@ -1,0 +1,91 @@
+{
+ "source": "configs/diagnostics/public_board.yaml",
+ "study": {
+  "name": "public_board",
+  "description": "PSUM team players vs structured private chat, with a public board, first sprint only",
+  "conditions": [
+   {
+    "scenario": null,
+    "name": "pub_team_players",
+    "game": "configs/games/actions_v04_sum.yaml",
+    "set": {
+     "prompts.colluder": "",
+     "series.rounds": 1,
+     "boards.public": true,
+     "phases": [
+      {
+       "kind": "reserve",
+       "passes": 2,
+       "boards": [
+        "public"
+       ],
+       "binding": "none"
+      },
+      {
+       "kind": "claim",
+       "post_message": "no"
+      }
+     ]
+    }
+   },
+   {
+    "scenario": null,
+    "name": "pub_private_chat_structured",
+    "game": "configs/games/actions_v04_sum.yaml",
+    "set": {
+     "series.rounds": 1,
+     "boards.public": true,
+     "boards.secret": true,
+     "prompts.colluder": "prompts/colluder/coalition_sum_structured_chat.txt",
+     "prompts.colluder_header": true,
+     "phases": [
+      {
+       "kind": "reserve",
+       "passes": 2,
+       "boards": [
+        "public",
+        "secret"
+       ],
+       "binding": "none"
+      },
+      {
+       "kind": "claim",
+       "post_message": "no"
+      }
+     ]
+    }
+   }
+  ],
+  "models": [
+   "configs/models/gpt-5-mini.yaml"
+  ],
+  "seeds": "1-20",
+  "replications": 1,
+  "max_concurrency": 10,
+  "out_dir": "runs"
+ },
+ "args": {
+  "study": "configs/diagnostics/public_board.yaml",
+  "dry_run": false,
+  "yes": true,
+  "scripted": null,
+  "only": null,
+  "models": null,
+  "use_model": null,
+  "seeds": null,
+  "replications": null,
+  "resume": null,
+  "concurrency": null,
+  "out": null,
+  "no_summary": false,
+  "quiet": false,
+  "verbose": 0,
+  "log_level": null,
+  "show": "",
+  "hide": ""
+ },
+ "scenarios": {
+  "pub_team_players": null,
+  "pub_private_chat_structured": null
+ }
+}
