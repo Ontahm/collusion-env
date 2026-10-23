@@ -33,6 +33,8 @@ FAMILIES = {
            "on the same issue. Numbered along the information ladder, most information first.",
     "HV": "The team design of 23 Oct: a high-value ticket the coalition wants; chat vs reservation rounds.",
     "VAR": "Variants of the HV design, one setting changed each.",
+    "PLANT": "Actions design v0.4: planted boards (a task both colluders want most, with a verified conflict with the "
+             "team), Colosseum's coalition goal, 2 reservation passes + claim, 20 rounds with the same team on new boards.",
 }
 
 
