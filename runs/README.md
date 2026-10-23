@@ -31,9 +31,9 @@ capture) is recomputed to the same value.
 
 | Run | What | Status |
 |---|---|---|
-| `20261023-174516__actions_v04` | stage-1 pilot, seeds 1-3 (PLANT-1, PLANT-2, PLANT-0), $3.21 | the positive control (private chat) shows no coalition gain; not to be resumed until the skipping below is understood |
+| `20261023-174516__actions_v04` | stage-1 pilot, seeds 1-3 (PLANT-1, PLANT-2, PLANT-0), $3.21 | the positive control (private chat) shows no coalition gain; not to be resumed until the skipping below is fixed |
 | `20261023-181442__skip_ablation` | diagnostic (`configs/diagnostics/skip_ablation.yaml`): planted vs Colosseum boards x with vs without reservations, team players, $0.98 | every cell skips about 20% of claims (Colosseum reproduction: 5-13%); round 1 about 11% |
-| `20261023-182104__skip_ablation2` | diagnostic (`configs/diagnostics/skip_ablation2.yaml`): with vs without the sprint history x with vs without the reward-per-task list | in progress |
+| `20261023-182104__skip_ablation2` | diagnostic (`configs/diagnostics/skip_ablation2.yaml`): with vs without the sprint history x with vs without the reward-per-task list (Colosseum boards, claim pass only, seeds 1-6), $0.68 | the history is the cause: 16% skips with it, 9% without (as the Colosseum reproduction); the reward list changes nothing. Not explained by agents copying others' skips shown in the history |
 
 Diagnostics are not results: they use ad-hoc conditions (game + overrides), so they live outside
 `configs/studies/`.

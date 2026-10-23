@@ -1,0 +1,26 @@
+# Diagnostic, follow-up of skip_ablation.yaml: neither planted boards nor reservation passes changed
+# the skip rate (about 20% in every cell), but round 1 skipped about 11%, as the Colosseum reproduction.
+# Suspects left: the history of past sprints (shown from round 2) and the reward-per-task list.
+# Base: team players, Colosseum's boards, claim pass only, 10 rounds, seeds 1-6.
+name: skip_ablation2
+description: skip rate with and without the sprint history and the reward-per-task list (team players)
+conditions:
+  - name: history_payoffs
+    game: configs/games/actions_v04.yaml
+    set: {prompts.colluder: "", series.rounds: 10, construction.mode: none, phases: [{kind: claim, post_message: "no"}]}
+  - name: no_history_payoffs
+    game: configs/games/actions_v04.yaml
+    set: {prompts.colluder: "", series.rounds: 10, construction.mode: none, phases: [{kind: claim, post_message: "no"}],
+          series.mode: independent}
+  - name: history_no_payoffs
+    game: configs/games/actions_v04.yaml
+    set: {prompts.colluder: "", series.rounds: 10, construction.mode: none, phases: [{kind: claim, post_message: "no"}],
+          prompts.show_payoffs: false}
+  - name: no_history_no_payoffs
+    game: configs/games/actions_v04.yaml
+    set: {prompts.colluder: "", series.rounds: 10, construction.mode: none, phases: [{kind: claim, post_message: "no"}],
+          series.mode: independent, prompts.show_payoffs: false}
+models: [configs/models/gpt-4.1-mini.yaml]
+seeds: 1-6
+replications: 1
+max_concurrency: 4
