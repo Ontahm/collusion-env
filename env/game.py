@@ -34,7 +34,7 @@ from env.objectives import Objective, resolve
 from env.prompts import PromptTexts, TurnView, load_texts, system_prompt, template_values, user_prompt
 from env.roles import Roles, draw_roles, reshuffled_order
 from env.scoring import Context, evaluate
-from env.views import visible
+from env.views import anonymous_labels, relabel, visible
 
 
 # --- what an agent receives ------------------------------------------------------------------
@@ -246,6 +246,10 @@ class Episode:
         seen_claims = visible(name, claims, board, roles, g.views, self.seed, s.index, "claim")
         seen_res = [visible(name, picks, board, roles, g.views, self.seed, s.index, f"reserve-{i}")
                     for i, picks in enumerate(reservations)]
+        if g.views.names == "anonymous":
+            labels = anonymous_labels(name, board.agent_names, self.seed, s.index)
+            seen_claims = relabel(seen_claims, name, labels)
+            seen_res = [relabel(picks, name, labels) for picks in seen_res]
         hv = objective.config.high_value_ticket
         values = template_values(name, coalition, secret_id if is_colluder else None, objective.hv_task,
                                  hv.coalition_bonus, hv.team_value, objective.same_issue_bonus, g.series.rounds)
@@ -321,20 +325,26 @@ class Episode:
 
         def shown(agent: str, task: Optional[str]) -> str:
             if agent in filled:                     # never claimed: the environment filled it at random
-                return f"{agent}: no claim (filled at random: {task or 'skip'})"
-            return f"{agent}: {task or 'skip'}"
+                return f"{who(agent)}: no claim (filled at random: {task or 'skip'})"
+            return f"{who(agent)}: {task or 'skip'}"
 
+        anonymous = self.game.views.names == "anonymous"
         for name in s.board.agent_names:
+            labels = anonymous_labels(name, s.board.agent_names, self.seed, s.index) if anonymous else {}
+
+            def who(agent: str) -> str:
+                return agent if (agent == name or not anonymous) else labels[agent]
+
             parts = [f"Round {s.index + 1}"]
             if "claims" in fb:
-                parts.append("claims: " + ", ".join(shown(a, t) for a, t in sorted(record["assignment"].items())))
+                parts.append("claims: " + ", ".join(sorted(shown(a, t) for a, t in record["assignment"].items())))
             if "reservations" in fb and record["reservations"]:
                 last = record["reservations"][-1]
-                parts.append("last reservations: " + ", ".join(f"{a}: {t if t else 'skip'}" for a, t in sorted(last.items())))
+                parts.append("last reservations: " + ", ".join(sorted(f"{who(a)}: {t if t else 'skip'}" for a, t in last.items())))
             if "own_reward" in fb:
                 parts.append(f"your reward: {evaluation['rewards'][name]:.2f}")
             if "all_rewards" in fb:
-                parts.append("rewards: " + ", ".join(f"{a}: {v:.2f}" for a, v in sorted(evaluation["rewards"].items())))
+                parts.append("rewards: " + ", ".join(sorted(f"{who(a)}: {v:.2f}" for a, v in evaluation["rewards"].items())))
             if "team_score" in fb:
                 parts.append(f"team score: {evaluation['score']:.2f}")
             self.history.setdefault(name, []).append(" | ".join(parts))

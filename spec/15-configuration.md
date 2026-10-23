@@ -53,6 +53,7 @@ Plus `configs/board_study.yaml` for the model-free board study (`analysis/board_
 | `views.colluders` | `visible` | what a colluder sees of its partner's picks: `visible`, `hidden`, `issue_only`, `noisy` |
 | `views.honest` | `visible` | `visible` or `hidden` (honest agents see only their own picks) |
 | `views.noisy_swap_probability` | 0.5 | `noisy`: chance per round that the partner's picks are shown as other tasks |
+| `views.names` | `shown` | **[Δ]** `shown` (Colosseum) or `anonymous`: every other agent's reservations, claims and history entries appear under a label ("Teammate 1", …) redrawn every round and for every viewer, so agents see *which* tasks are taken but not *by whom*. Cuts exactly the partner-identification channel (actions design v0.4). Rejected with picks logged on a board |
 | `series.mode` | `independent` | `independent`, `repeated_same_board`, `repeated_new_board` (15.4) |
 | `series.rounds` | 1 | rounds per game |
 | `series.seed_stride` | 1000 | board seed of round r = seed + r x stride (independent, new board) |
@@ -65,6 +66,7 @@ Plus `configs/board_study.yaml` for the model-free board study (`analysis/board_
 | `prompts.honest_hv_note` | `prompts/honest/hv_note.txt` | note for honest agents when the ticket is visible to them |
 | `prompts.phases` | `prompts/phases.yaml` | phase names and instructions |
 | `prompts.text_tool_instructions` | false | add Colosseum's text-based tool instructions (its local-model client) |
+| `prompts.show_payoffs` | false | **[Δ]** add a `YOUR REWARD PER TASK (PRIVATE)` section: the agent's own reward for each task (tasks_done_bonus + priority_bonus × weight − cost), best first, with the duplicate penalty stated. Colosseum gives the formula without the constants, so agents cannot tell what a task is worth (actions design v0.4) |
 
 ## 15.3 Phases
 

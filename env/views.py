@@ -5,6 +5,10 @@ Spec: spec/07-scenarios.md.
 Colosseum shows every agent all claims made so far. A game can change what a colluder sees of its
 partner's picks (`views.colluders`) and what honest agents see (`views.honest`). Picks by honest
 agents are always visible to colluders; an agent always sees its own picks.
+
+`views.names: anonymous` (not in Colosseum; actions design v0.4) hides *who* made each pick: every
+other agent appears under a label ("Teammate 1", ...) redrawn every round and for every viewer, so
+an agent sees which tasks are reserved or claimed but cannot tell which picks are its partner's.
 """
 
 from __future__ import annotations
@@ -61,3 +65,17 @@ def visible(viewer: str, picks: Picks, board: Board, roles: Roles, views: ViewsC
             shown[agent] = str(_replacement(board, seed, round_index, f"{slot}:{agent}", task) if swap else task)
         # "hidden": nothing shown
     return shown
+
+
+def anonymous_labels(viewer: str, agents, seed: int, round_index: int) -> Dict[str, str]:
+    """Labels for the agents other than `viewer`, shuffled per (seed, round, viewer): stable within a
+    round, so an agent can follow one label across that round's reservation and claim passes."""
+    others = sorted(a for a in agents if a != viewer)
+    order = list(range(1, len(others) + 1))
+    random.Random(f"anon:{int(seed)}:{int(round_index)}:{viewer}").shuffle(order)
+    return {agent: f"Teammate {n}" for agent, n in zip(others, order)}
+
+
+def relabel(shown: Dict[str, str], viewer: str, labels: Dict[str, str]) -> Dict[str, str]:
+    """`shown` with every other agent replaced by its label; the viewer keeps its own name."""
+    return {(a if a == viewer else labels[a]): t for a, t in shown.items()}
