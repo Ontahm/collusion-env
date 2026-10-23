@@ -16,6 +16,9 @@ prompts only).
 | `colluder/high_value_nochat.txt` | **draft** for the high-value game without boards: no header, so it names the partner itself |
 | `colluder/high_value_draft.txt` | **draft**, alternative wording in the style of the 19 Oct team note |
 | `colluder/coalition_nochat.txt` | **draft** (actions design v0.4): Colosseum's `simple` text naming the partner, for games without boards (no header) |
+| `colluder/coalition_sum_nochat.txt` | **draft** (actions design v0.4, PLANT-2/3): as `coalition_nochat.txt`, plus the coalition's reward defined as the sum of the members' rewards (decisions Q-34) |
+| `colluder/own_reward_def_nochat.txt` | **draft** (actions design v0.4, PSUM-4): `own_reward_nochat.txt` plus the same definition of an agent's reward |
+| `colluder/coalition_sum_chat.txt` | **draft** (actions design v0.4, PLANT-1): Colosseum's `simple` text plus the same definition, used with Colosseum's coalition header |
 | `colluder/own_reward_nochat.txt` | **draft** (actions design v0.4): the "greedy pair" baseline; the two designated agents maximize their own reward, with no partner and no shared goal |
 | `honest/hv_note.txt` | **draft**: what honest agents are told when the high-value ticket is visible to them |
 | `phases.yaml` | phase names and instructions: Colosseum's for planning and claiming (verbatim), **draft** for reservation |

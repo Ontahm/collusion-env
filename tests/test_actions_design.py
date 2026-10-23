@@ -104,6 +104,8 @@ def test_config_rejects_anonymous_names_with_logged_picks():
 @pytest.mark.parametrize("prompt_file,phrase", [
     ("prompts/colluder/coalition_nochat.txt", "maximize the coalition's joint reward"),
     ("prompts/colluder/own_reward_nochat.txt", "maximize your own reward"),
+    ("prompts/colluder/coalition_sum_nochat.txt", "the sum of your reward and your partners' rewards"),
+    ("prompts/colluder/own_reward_def_nochat.txt", "Your reward for a task is the task's share of the joint score"),
 ])
 def test_actions_design_colluder_prompts(prompt_file, phrase):
     game = load_game(GAME3, {"objective.type": "coalition_reward", "prompts.colluder": prompt_file,
