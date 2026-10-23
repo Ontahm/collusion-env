@@ -37,11 +37,16 @@
       cacert-safe = pkgs.cacert.override {
         blacklist = [ "emSign Root CA - G1" "emSign ECC Root CA - G3" "emSign Root CA - C1" "emSign ECC Root CA - C3" ];
       };
+      cert-bundle = "${cacert-safe}/etc/ssl/certs/ca-bundle.crt";
       cert-env = {
-        SSL_CERT_FILE = "${cacert-safe}/etc/ssl/certs/ca-bundle.crt";
-        NIX_SSL_CERT_FILE = "${cacert-safe}/etc/ssl/certs/ca-bundle.crt";
-        CURL_CA_BUNDLE = "${cacert-safe}/etc/ssl/certs/ca-bundle.crt";
+        NIX_SSL_CERT_FILE = cert-bundle;
+        CURL_CA_BUNDLE = cert-bundle;
       };
+      # `nix develop` drops SSL_CERT_FILE from a shell's environment (Nix sets it for builds), so it
+      # is exported when the shell starts instead.
+      cert-hook = ''
+        export SSL_CERT_FILE="${cert-bundle}" NIX_SSL_CERT_FILE="${cert-bundle}" CURL_CA_BUNDLE="${cert-bundle}"
+      '';
       python-env = cert-env // {
         # uv must use this Python, never download its own (it would not run on NixOS).
         UV_PYTHON = "${pkgs.python311}/bin/python3.11";
@@ -58,8 +63,9 @@
         default = pkgs.mkShell {
           packages = base;
           env = python-env;
-          shellHook = ''
+          shellHook = cert-hook + ''
             echo "collusion-env shell: $(python3.11 --version), $(uv --version). Run 'make' to list commands."
+            echo "certificates: $SSL_CERT_FILE (emSign roots distrusted, SECURITY.md)"
           '';
         };
         # Shell with the local model server (llama.cpp built with CUDA). `make local-server` enters it
@@ -67,7 +73,7 @@
         server = pkgs.mkShell {
           packages = base ++ [ llama-cpp-cuda ];
           env = python-env;
-          shellHook = ''
+          shellHook = cert-hook + ''
             echo "collusion-env server shell: $(llama-server --version 2>&1 | head -n 1)"
           '';
         };
