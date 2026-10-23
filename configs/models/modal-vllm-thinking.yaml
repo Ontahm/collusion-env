@@ -1,0 +1,9 @@
+# The same Modal server as modal-vllm.yaml (Qwen3-8B), thinking on: the model reasons before
+# answering (kept in the logs as reasoning text). Thinking is a per-request switch, so one server
+# serves both files. Answers can be long: the local thinking 4B was cut off at 4,096 tokens.
+extends: ./modal-vllm.yaml
+label: modal-qwen3-8b-thinking
+max_tokens: 8192                     # prompt (ACT: < 1,400 tokens) + 8,192 fits the server's 16,384 context
+timeout_s: 1200
+extra_body:
+  chat_template_kwargs: {enable_thinking: true}

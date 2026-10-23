@@ -1,6 +1,6 @@
 # collusion-env commands. Run inside `nix develop` (or any shell with Python 3.11+ and uv).
 .DEFAULT_GOAL := help
-.PHONY: help setup test smoke models local-server local-server-abliterated check-model dry-run run summarize runs episode scenarios prompts board-study check-env
+.PHONY: help setup test smoke models local-server local-server-abliterated check-model dry-run run summarize runs episode scenarios prompts board-study check-env modal-setup modal-run
 
 # Python with the libraries prebuilt wheels need on NixOS (empty elsewhere).
 PY := LD_LIBRARY_PATH="$${ENV_PY_LD_LIBRARY_PATH:-}" uv run --locked python
@@ -16,6 +16,9 @@ CTX ?= 12288
 QWEN_URL := https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf
 ABLIT_URL := https://huggingface.co/Mungert/Qwen3-4B-abliterated-GGUF/resolve/56175aed285a884480f49bb18d2a1b0e05a7749f/Qwen3-4B-abliterated-q4_k_m.gguf
 ARGS ?=
+# Modal (scripts/modal_tool.py, deploy/README.md): which model file to deploy and run, episodes in parallel.
+MODAL_MODEL ?= configs/models/modal-vllm.yaml
+CONC ?= 16
 LOG ?=
 LOG_ARG := $(if $(LOG),--log-level $(LOG),)
 
@@ -81,3 +84,30 @@ prompts: check-env ## The exact prompts of a scenario, on a sample board: make p
 
 board-study: check-env ## Model-free board study (BOARD_STUDY=configs/board_study.yaml)
 	$(PY) -m analysis.board_study $(BOARD_STUDY) $(ARGS)
+
+# Modal (deploy/README.md). Both targets stop the server at the end, also on error or Ctrl+C.
+modal-setup: check-env ## Modal, once per person (again = new key): install, log in, key, deploy, check, stop
+	@export PATH="$$HOME/.local/bin:$$PATH"; set -e; \
+	command -v modal >/dev/null || { echo "[modal] installing the modal command"; uv tool install modal; }; \
+	[ -f "$$HOME/.modal.toml" ] || { echo "[modal] logging in (opens the browser)"; modal setup; }; \
+	touch .env; chmod 600 .env; \
+	KEY=$$($(PY) -c 'import secrets; print(secrets.token_urlsafe(32))'); \
+	modal secret create collusion-vllm VLLM_API_KEY="$$KEY" --force >/dev/null; \
+	{ grep -v '^MODAL_VLLM_API_KEY=' .env || true; echo "MODAL_VLLM_API_KEY=$$KEY"; } > .env.tmp; mv .env.tmp .env; chmod 600 .env; \
+	echo "[modal] new endpoint key stored in the Modal secret collusion-vllm and in .env"; \
+	trap 'echo "[modal] stopping the server"; modal app stop collusion-vllm --yes || true' EXIT; trap 'exit 130' INT TERM; \
+	URL=$$(modal deploy deploy/modal_vllm.py | tee /dev/stderr | grep -o 'https://[^ ]*\.modal\.direct' | tail -n 1); \
+	[ -n "$$URL" ] || { echo "[modal] deploy failed (see above)"; exit 1; }; \
+	{ grep -v '^MODAL_VLLM_BASE_URL=' .env || true; echo "MODAL_VLLM_BASE_URL=$$URL/v1"; } > .env.tmp; mv .env.tmp .env; chmod 600 .env; \
+	echo "[modal] your server URL is saved in .env; waiting for the model (a cold start takes a few minutes)"; \
+	$(PY) -m agents.check $(MODAL_MODEL); \
+	CODE=$$(curl -s -o /dev/null -w '%{http_code}' "$$URL/v1/models"); \
+	[ "$$CODE" = 401 ] || { echo "[modal] DANGER: a request without the key got HTTP $$CODE, not 401: do not use this endpoint"; exit 1; }; \
+	echo "[modal] protected (requests without the key get 401). Ready: make modal-run STUDY=configs/studies/<study>.yaml"
+
+modal-run: check-env ## Run STUDY on Modal: deploy, run, always stop the server (MODAL_MODEL=, CONC=, ARGS=)
+	@case "$(origin STUDY)" in "command line"|environment) ;; *) echo "which study? make modal-run STUDY=configs/studies/<study>.yaml"; exit 1;; esac
+	@export PATH="$$HOME/.local/bin:$$PATH"; \
+	trap 'echo "[modal] stopping the server"; modal app stop collusion-vllm --yes || true' EXIT; trap 'exit 130' INT TERM; \
+	modal deploy deploy/modal_vllm.py || exit 1; \
+	$(PY) -m run $(STUDY) --use-model $(MODAL_MODEL) --concurrency $(CONC) --yes $(ARGS)

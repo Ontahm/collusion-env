@@ -5,7 +5,7 @@ that deploys (`pip install modal`, then `modal setup`). The environment calls th
 API (configs/models/modal-vllm.yaml). Follows Modal's vLLM example (modal.com/docs/examples/vllm_inference).
 
     export MODEL=Qwen/Qwen3-8B TOOL_PARSER=hermes REASONING_PARSER=qwen3 GPU=L40S:1   # optional
-    modal secret create collusion-vllm VLLM_API_KEY=<a long random string>            # once
+    make modal-setup        # once per person: key, deploy, checks (Makefile)
     modal deploy deploy/modal_vllm.py
 
 The deploy prints the URL, https://<workspace>--collusion-vllm-server.<region>.modal.direct ;

@@ -109,6 +109,18 @@ def load_env_file(path: Path = ROOT / ".env") -> None:
         os.environ.setdefault(key.strip(), value)
 
 
+def missing_settings(jobs: List["Job"]) -> List[str]:
+    """Environment variables a model needs (its key, its server URL) that are not set: reported before
+    anything runs, instead of failing in the middle of a run."""
+    out = []
+    for m in {j.model.label: j.model for j in jobs if j.model.provider != "scripted"}.values():
+        for var, what in ((m.api_key_env, "key"), (m.base_url_env, "server URL")):
+            if var and not os.environ.get(var):
+                hint = " (Modal: make modal-setup)" if "MODAL" in var else ""
+                out.append(f"model {m.label!r}: its {what} is missing: set {var} in .env{hint}")
+    return out
+
+
 def is_local(model: ModelConfig) -> bool:
     return any(h in model.base_url for h in ("://127.0.0.1", "://localhost", "://0.0.0.0", "://[::1]"))
 
@@ -534,6 +546,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         log.warning(warning)
     if args.dry_run or not jobs:
         return 0
+    missing = missing_settings(jobs)
+    if missing:
+        for problem in missing:
+            log.error(problem)
+        return 2
     remote = sorted({j.model.label for j in jobs if j.model.provider != "scripted" and not is_local(j.model)})
     if remote and not args.yes:
         if not sys.stdin.isatty():

@@ -1,14 +1,17 @@
-# An open-weight model served on Modal by deploy/modal_vllm.py (see deploy/README.md).
-# Fill in base_url after `modal deploy` (the printed URL + /v1) and the served model name.
+# An open-weight model served on Modal (deploy/README.md). Your server's URL comes from .env
+# (MODAL_VLLM_BASE_URL), so this file works for everyone:
+#   make modal-setup                                   # once per person
+#   make modal-run STUDY=configs/studies/<study>.yaml  # deploy, run the study on this model, stop
 label: modal-qwen3-8b
 provider: openai_compatible
-base_url: https://ontahm--collusion-vllm-server.us-east.modal.direct/v1
-model: Qwen/Qwen3-8B
-api_key_env: MODAL_VLLM_API_KEY      # the key given to `modal secret create collusion-vllm`
+base_url: https://YOUR-WORKSPACE--collusion-vllm-server.us-east.modal.direct/v1   # placeholder: see base_url_env
+base_url_env: MODAL_VLLM_BASE_URL    # your server's URL + /v1, in .env (make modal-setup writes it)
+model: Qwen/Qwen3-8B                 # the name the server exposes (deploy/modal_vllm.py: MODEL)
+api_key_env: MODAL_VLLM_API_KEY      # the key in the Modal secret `collusion-vllm` (make modal-setup)
 temperature: 0.7
-max_tokens: 1500                     # thinking models may need more (e.g. 4096)
+max_tokens: 1500                     # thinking models need more (see modal-vllm-thinking.yaml)
 send_seed: true                      # vLLM honours per-call seeds
 timeout_s: 900
 startup_wait_s: 1200                 # after an idle period Modal refuses requests (503) until the model is
                                      # loaded: check-model and runs wait up to 20 min for it
-extra_body: {chat_template_kwargs: {enable_thinking: false}}     # Qwen3: thinking off, as local-qwen3-4b (remove to turn it on)
+extra_body: {chat_template_kwargs: {enable_thinking: false}}     # Qwen3: thinking off, as local-qwen3-4b
