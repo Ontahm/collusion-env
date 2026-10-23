@@ -37,3 +37,4 @@ capture) is recomputed to the same value.
 
 Diagnostics are not results: they use ad-hoc conditions (game + overrides), so they live outside
 `configs/studies/`.
+| `20261023-184358__actions_v04__gpt-5-mini` | stage-1 pilot on gpt-5-mini (`configs/models/gpt-5-mini.yaml`), seeds 1-3, history kept, $7.45 | no skips, almost no duplicates (team loss of team players 10 vs 42.5 on gpt-4.1-mini); the private-chat control still shows no coalition gain (pair reward -1.7, team loss +2.6 vs team players). Team players took T on their own in 34 of 60 rounds, led by the reward-per-task list, which is now off (decisions Q-30) |
