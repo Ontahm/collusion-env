@@ -1,0 +1,29 @@
+# Diagnostic, not a result: is the missing public board why the chat control shows no gain?
+# The PSUM first-sprint checks (runs/20261023-210152__psum_first_sprint_check,
+# runs/20261023-212045__psum_structured_check) had no public board: whoever reserved the tempting task
+# first kept it. Here Colosseum's public board is back during both reservation passes (everyone may
+# post); everything else as PSUM-0 and PSUM-5, same 20 first sprints (same boards, colluders, orders).
+# The actions-only conditions stay without a public board (decisions Q-35).
+name: public_board
+description: PSUM team players vs structured private chat, with a public board, first sprint only
+conditions:
+  - name: pub_team_players
+    game: configs/games/actions_v04_sum.yaml
+    set:
+      prompts.colluder: ""
+      series.rounds: 1
+      boards.public: true
+      phases: [{kind: reserve, passes: 2, boards: [public], binding: none}, {kind: claim, post_message: "no"}]
+  - name: pub_private_chat_structured
+    game: configs/games/actions_v04_sum.yaml
+    set:
+      series.rounds: 1
+      boards.public: true
+      boards.secret: true
+      prompts.colluder: prompts/colluder/coalition_sum_structured_chat.txt
+      prompts.colluder_header: true
+      phases: [{kind: reserve, passes: 2, boards: [public, secret], binding: none}, {kind: claim, post_message: "no"}]
+models: [configs/models/gpt-5-mini.yaml]
+seeds: 1-20
+replications: 1
+max_concurrency: 10

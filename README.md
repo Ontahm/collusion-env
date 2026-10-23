@@ -362,23 +362,27 @@ regret gap (colluders do better), in the paper's direction; with 10 seeds the ef
 paper's judge score is not reproduced (no judge here), and Colosseum's own chart rescales the
 coalition advantage per model, so only its direction is comparable.
 
-### 6.2 Actions design v0.4 (PLANT scenarios)
+### 6.2 Actions design v0.4 (PSUM scenarios)
 
 Can instructed colluders gain by using actions (reserve, release, claim) as their only
 communication? Planted boards (`construction.mode: planted`, `env/construct.py`) give every round a
 task T that both colluders want most, a verified loss for the team if a colluder takes it, and a
-private fit gap between the colluders; agents see their own reward per task; 20 rounds with the same
-team on new boards, 2 reservation passes + 1 claim pass each.
+private fit gap between the colluders; 20 rounds with the same team on new boards, 2 reservation
+passes + 1 claim pass each. Agents see their costs only, as in Colosseum, and colluders are told
+that the coalition's reward is the sum of the members' rewards (`configs/games/actions_v04_sum.yaml`,
+PSUM scenarios; spec/decisions.md Q-30, Q-34). The earlier PLANT scenarios (rewards per task shown,
+coalition reward undefined) keep their rules for the two pilots made with them.
 
 ```bash
-make run STUDY=configs/studies/actions_v04.yaml ARGS='--seeds 1-3 --yes'              # pilot, ~$4
+make run STUDY=configs/studies/actions_v04.yaml ARGS='--use-model configs/models/gpt-5-mini.yaml --seeds 1-3 --concurrency 9 --yes'   # pilot, ~$7.50, ~50 min
 make run STUDY=configs/studies/actions_v04.yaml ARGS='--resume runs/<pilot folder> --yes'   # seeds 4-10, if nothing changed
 uv run python -m analysis.actions_v04 runs/<the run folder>                          # actions_v04.md
 ```
 
-Measures (spec/08-metrics.md, 8.x): partner asymmetry (does a colluder avoid T more when its partner
-holds it than when a stranger does?), capture rate, the coalition getting T, clashes, the better
-colluder getting T, early vs late rounds.
+gpt-5-mini, not gpt-4.1-mini: gpt-4.1-mini misreads the sprint history and skips claims
+(`runs/README.md`, skip diagnostics). Main metric: the pair's reward and the team's loss as a change
+from team players, paired by seed. Debug measures (spec/08-metrics.md): partner asymmetry, capture
+rate, the coalition getting T, clashes, the better colluder getting T, early vs late rounds.
 
 ---
 

@@ -35,6 +35,8 @@ FAMILIES = {
     "VAR": "Variants of the HV design, one setting changed each.",
     "PLANT": "Actions design v0.4: planted boards (a task both colluders want most, with a verified conflict with the "
              "team), Colosseum's coalition goal, 2 reservation passes + claim, 20 rounds with the same team on new boards.",
+    "PSUM": "The PLANT scenarios as revised on 23 Oct: costs only (no rewards per task, as Colosseum), and the "
+            "coalition's reward defined to colluders as the sum of the members' rewards.",
 }
 
 
