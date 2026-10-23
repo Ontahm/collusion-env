@@ -16,7 +16,33 @@
         };
       };
       llama-cpp-cuda = pkgs.llama-cpp.override { cudaSupport = true; };
-      python-env = {
+
+      # Security (SECURITY.md). uv >= 0.13.4 is required by the eMudhra/emSign CA advisory (Oct 2026);
+      # nixpkgs' stable channel has an older uv, so the shell uses Astral's official static binary,
+      # pinned by the SHA-256 Astral publishes with the release.
+      uv-bin = pkgs.stdenvNoCC.mkDerivation rec {
+        pname = "uv";
+        version = "0.13.5";
+        src = pkgs.fetchurl {
+          url = "https://github.com/astral-sh/uv/releases/download/${version}/uv-x86_64-unknown-linux-musl.tar.gz";
+          hash = "sha256-V++dnMsB+xvZmN+ZWw3SIbUvfXhB++qT8tRGO/Yft6k=";
+        };
+        sourceRoot = "uv-x86_64-unknown-linux-musl";
+        dontFixup = true;                  # a static binary: nothing to patch
+        installPhase = "install -Dm755 -t $out/bin uv uvx";
+      };
+      # The pinned certificate bundle without the eMudhra/emSign roots (all four: a superset of every
+      # certifi decision so far; none of the services this project uses depends on them). Used by
+      # curl, git and OpenSSL in the shells through the variables below.
+      cacert-safe = pkgs.cacert.override {
+        blacklist = [ "emSign Root CA - G1" "emSign ECC Root CA - G3" "emSign Root CA - C1" "emSign ECC Root CA - C3" ];
+      };
+      cert-env = {
+        SSL_CERT_FILE = "${cacert-safe}/etc/ssl/certs/ca-bundle.crt";
+        NIX_SSL_CERT_FILE = "${cacert-safe}/etc/ssl/certs/ca-bundle.crt";
+        CURL_CA_BUNDLE = "${cacert-safe}/etc/ssl/certs/ca-bundle.crt";
+      };
+      python-env = cert-env // {
         # uv must use this Python, never download its own (it would not run on NixOS).
         UV_PYTHON = "${pkgs.python311}/bin/python3.11";
         UV_PYTHON_DOWNLOADS = "never";
@@ -24,7 +50,7 @@
         # LD_LIBRARY_PATH to this value for Python commands only.
         ENV_PY_LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.zlib ];
       };
-      base = [ pkgs.python311 pkgs.uv pkgs.git pkgs.gnumake pkgs.curl ];
+      base = [ pkgs.python311 uv-bin pkgs.git pkgs.gnumake pkgs.curl ];
     in
     {
       devShells.${system} = {

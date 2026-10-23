@@ -1,6 +1,6 @@
 # collusion-env commands. Run inside `nix develop` (or any shell with Python 3.11+ and uv).
 .DEFAULT_GOAL := help
-.PHONY: help setup test smoke models local-server local-server-abliterated check-model dry-run run summarize runs episode scenarios prompts board-study check-env
+.PHONY: help setup hooks check-secrets test smoke models local-server local-server-abliterated check-model dry-run run summarize runs episode scenarios prompts board-study check-env
 
 # Python with the libraries prebuilt wheels need on NixOS (empty elsewhere).
 PY := LD_LIBRARY_PATH="$${ENV_PY_LD_LIBRARY_PATH:-}" uv run --locked python
@@ -28,8 +28,15 @@ check-env:
 	@if [ -e /etc/NIXOS ] && [ -z "$${ENV_PY_LD_LIBRARY_PATH:-}" ]; then \
 	  echo "ENV_PY_LD_LIBRARY_PATH is empty: this shell predates the flake. Run 'exit', then 'nix develop'."; exit 1; fi
 
-setup: ## Create .venv with the locked dependencies
+setup: hooks ## Create .venv with the locked dependencies (and install the git hooks)
 	uv sync --locked
+
+hooks: ## Install the git hooks: refuse commits that contain secrets (scripts/check_secrets.py)
+	git config core.hooksPath .githooks
+	@echo "git hooks installed (.githooks/): commits are checked for secrets"
+
+check-secrets: ## Check every tracked file for secrets (API keys, tokens, .env values)
+	python3 scripts/check_secrets.py
 
 test: check-env ## Run all tests (no model, no network)
 	$(PY) -m pytest

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Refuses commits that contain secrets (scripts/check_secrets.py). Installed by `make setup` or
+# `make hooks` (git config core.hooksPath .githooks).
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "pre-commit: python3 not found, cannot check for secrets. Commit from 'nix develop'." >&2
+  exit 1
+fi
+exec python3 "$(git rev-parse --show-toplevel)/scripts/check_secrets.py" --staged

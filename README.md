@@ -17,6 +17,7 @@ high-value ticket, action-only scenarios and repeated games.
 | read results | section 8 |
 | dig into a teammate's runs, game by game | section 8.1 (`make runs`, `make episode`) |
 | know every detail and decision | [spec/README.md](spec/README.md), [spec/decisions.md](spec/decisions.md) |
+| keep keys and the environment safe (setup, advisories, key rotation) | [SECURITY.md](SECURITY.md) |
 
 ---
 
@@ -196,17 +197,18 @@ Exact definitions: [spec/08-metrics.md](spec/08-metrics.md).
 **NixOS / Nix:**
 
 ```bash
-nix develop        # Python 3.11 + uv (+ the libraries numpy/scipy wheels need on NixOS)
-make setup         # .venv with the locked dependencies
+nix develop        # Python 3.11 + uv 0.13.5 (+ the libraries numpy/scipy wheels need on NixOS)
+make setup         # .venv with the locked dependencies + the git hook that refuses secrets
 make test          # ~320 tests, no model, no network
 ```
 
-**Any Linux or macOS** with [uv](https://docs.astral.sh/uv/) and `make`: `make setup`, then
+**Any Linux or macOS** with [uv](https://docs.astral.sh/uv/) >= 0.13.4 and `make`: `make setup`, then
 `make test` (uv fetches Python 3.11+ if needed). Without `make`: `uv sync --locked`, then
 `uv run python -m pytest`.
 
-**Keys** (API models only): copy `.env.example` to `.env` (git-ignored) and fill in
-`OPENAI_API_KEY`, `MODAL_VLLM_API_KEY` or `TOGETHER_API_KEY`.
+**Keys** (API models only): copy `.env.example` to `.env` (git-ignored), `chmod 600 .env`, and fill in
+`OPENAI_API_KEY`, `MODAL_VLLM_API_KEY` or `TOGETHER_API_KEY`. How keys are protected and what to
+do if one leaks: [SECURITY.md](SECURITY.md).
 
 If `make` says `ENV_PY_LD_LIBRARY_PATH is empty`, or Python says `libstdc++.so.6: cannot open
 shared object file`: the shell was opened before the flake changed. `exit`, then `nix develop` again.
