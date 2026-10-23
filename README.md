@@ -274,6 +274,7 @@ whether a condition changes anything at all; they do not predict GPT's results.
 make dry-run STUDY=configs/studies/<study>.yaml    # episodes, turns, maximum model calls: nothing runs
 make run     STUDY=configs/studies/<study>.yaml    # asks before calling a paid API (ARGS=--yes to skip)
 make summarize RUN=runs/<run folder>               # tables + charts
+make runs                                          # what has been run: study, model (local/modal/openai), conditions, progress
 make board-study                                   # model-free board analysis (all CPU cores)
 make smoke                                         # whole pipeline with scripted agents, free
 ```

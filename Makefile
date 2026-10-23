@@ -1,6 +1,6 @@
 # collusion-env commands. Run inside `nix develop` (or any shell with Python 3.11+ and uv).
 .DEFAULT_GOAL := help
-.PHONY: help setup test smoke models local-server local-server-abliterated check-model dry-run run summarize board-study check-env
+.PHONY: help setup test smoke models local-server local-server-abliterated check-model dry-run run summarize runs board-study check-env
 
 # Python with the libraries prebuilt wheels need on NixOS (empty elsewhere).
 PY := LD_LIBRARY_PATH="$${ENV_PY_LD_LIBRARY_PATH:-}" uv run --locked python
@@ -66,6 +66,9 @@ run: check-env ## Run STUDY (LOG=quiet|normal|verbose|debug; asks before calling
 
 summarize: check-env ## Summarise a run: make summarize RUN=runs/<run dir>
 	$(PY) -m analysis.summarize $(RUN)
+
+runs: check-env ## List the runs: study, model and where it ran, conditions, progress, time (ARGS='-v', '--grep modal')
+	$(PY) -m analysis.runs $(ARGS)
 
 board-study: check-env ## Model-free board study (BOARD_STUDY=configs/board_study.yaml)
 	$(PY) -m analysis.board_study $(BOARD_STUDY) $(ARGS)

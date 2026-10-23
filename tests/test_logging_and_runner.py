@@ -237,6 +237,23 @@ def test_time_left_counts_turns_not_episodes(monkeypatch):
     assert p.eta() == 0.0
 
 
+def test_run_listing(tmp_path, capsys):
+    """analysis.runs: one line per run with its model, conditions, progress and state."""
+    from analysis import runs
+    assert run.main(["configs/studies/action_channel.yaml", "--use-model", "configs/models/scripted.yaml",
+                     "--seeds", "1-2", "--only", "baseline,noisy", "--out", str(tmp_path), "-q", "--no-summary"]) == 0
+    capsys.readouterr()
+    assert runs.main(["--runs-dir", str(tmp_path), "--md", str(tmp_path / "runs.md")]) == 0
+    out = capsys.readouterr().out
+    line = next(l for l in out.splitlines() if "__action_channel__scripted" in l)
+    assert "scripted (scripted)" in line and "2: baseline, noisy" in line and "4/4" in line and "finished" in line
+    assert "| action_channel |" in (tmp_path / "runs.md").read_text()
+    assert runs.main(["--runs-dir", str(tmp_path), "-v", "--grep", "nothing-matches"]) == 0
+    assert "0 runs" in capsys.readouterr().out
+    assert runs.where("http://127.0.0.1:8080/v1") == "local" and runs.where("https://api.openai.com/v1") == "openai"
+    assert runs.where("https://ontahm--collusion-vllm-server.us-east.modal.direct/v1") == "modal"
+
+
 # --- metrics ignore random fills --------------------------------------------------------------------
 
 
