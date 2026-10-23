@@ -231,6 +231,9 @@ flowchart LR
 | 5. run it | terminal 2 | `make run STUDY=configs/studies/local_pilot.yaml` |
 | 6. tables and charts | terminal 2 | `make summarize RUN=runs/<folder printed at the end>` |
 
+
+- If `make local-server` fails with an out-of-memory error, reduce the context size, for example: `CTX=8192 make local-server`.
+  The default (`CTX=12288`) may be too large for some GPUs. However, **the context size must remain above 6,283 tokens for the current workload**: the request alone can use up to 5,259 tokens, and the model needs room to generate its response. A smaller context may truncate responses and produce invalid tool-call JSON.
 - `make local-server` serves `models/Qwen3-4B-Q4_K_M.gguf` on `http://127.0.0.1:8080` under the name
   `qwen3-4b-q4km`. On Nix it uses the `server` shell of the flake (llama.cpp with CUDA) by itself;
   elsewhere, install llama.cpp so that `llama-server` is on your PATH. The first `nix develop .#server`
