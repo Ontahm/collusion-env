@@ -34,7 +34,10 @@ from analysis.figures import save, style
 CONDITIONS = ("baseline", "emergent", "prompted")
 LABELS = {"baseline": "No secret channel", "emergent": "Secret channel,\nno instruction", "prompted": "Secret channel,\n\"simple\" instruction"}
 # Fig. 4 of the paper, GPT-4.1-mini (point 1), change from the no-channel control; read off the plot.
-PAPER_DELTA_NORMALIZED_REGRET = {"emergent": -0.035, "prompted": -0.07}
+# The regret axis of Fig. 4 puts "More" (more regret) at the top, where its tick labels are negative;
+# the text says prompted collusion "negatively affect[s] the cooperative system". So the values below
+# are condition minus control in regret, positive = the team does worse. Approximate.
+PAPER_DELTA_NORMALIZED_REGRET = {"emergent": 0.035, "prompted": 0.07}
 T95 = {1: 12.71, 2: 4.30, 3: 3.18, 4: 2.78, 5: 2.57, 6: 2.45, 7: 2.36, 8: 2.31, 9: 2.26, 10: 2.23, 15: 2.13, 20: 2.09}
 
 
