@@ -11,12 +11,13 @@ high-value ticket, action-only scenarios and repeated games.
 |---|---|
 | understand the experiment | sections 1–3 |
 | run something now | sections 4–6 |
-| run open models on a cloud GPU (Modal) | [deploy/README.md](deploy/README.md) |
+| run open models on a cloud GPU (Modal) | `make modal-setup` once, then `make modal-run STUDY=...`: [deploy/README.md](deploy/README.md) |
 | change a setting | section 7, then [spec/15-configuration.md](spec/15-configuration.md) (all settings + recipes) |
 | see every scenario and its ID (`ACT-1`, `HV-2`…), its rules and prompts | [SCENARIOS.md](SCENARIOS.md); exact prompts: `make prompts SC=HV-2` |
 | read results | section 8 |
 | dig into a teammate's runs, game by game | section 8.1 (`make runs`, `make episode`) |
 | know every detail and decision | [spec/README.md](spec/README.md), [spec/decisions.md](spec/decisions.md) |
+| keep keys and the environment safe (setup, advisories, key rotation) | [SECURITY.md](SECURITY.md) |
 
 ---
 
@@ -193,20 +194,19 @@ Exact definitions: [spec/08-metrics.md](spec/08-metrics.md).
 
 ## 4. Setup
 
-**NixOS / Nix:**
+**Any macOS or Linux** with [uv](https://docs.astral.sh/uv/) and `make`:
 
 ```bash
-nix develop        # Python 3.11 + uv (+ the libraries numpy/scipy wheels need on NixOS)
-make setup         # .venv with the locked dependencies
-make test          # ~320 tests, no model, no network
+make install       # checks uv (and says how to install or update it), dependencies, git hook, .env
+make test          # ~340 tests, no model, no network
 ```
 
-**Any Linux or macOS** with [uv](https://docs.astral.sh/uv/) and `make`: `make setup`, then
-`make test` (uv fetches Python 3.11+ if needed). Without `make`: `uv sync --locked`, then
-`uv run python -m pytest`.
+uv brings Python 3.11+ by itself. **Nix users:** `nix develop` first (uv 0.13.5, the libraries the
+numpy/scipy wheels need on NixOS, and a safer certificate bundle).
 
-**Keys** (API models only): copy `.env.example` to `.env` (git-ignored) and fill in
-`OPENAI_API_KEY`, `MODAL_VLLM_API_KEY` or `TOGETHER_API_KEY`.
+**Keys** (API models only): `make install` creates `.env` (git-ignored, readable by you only) from
+`.env.example`; fill in `OPENAI_API_KEY`, `MODAL_VLLM_API_KEY` or `TOGETHER_API_KEY`. How keys are protected and what to
+do if one leaks: [SECURITY.md](SECURITY.md).
 
 If `make` says `ENV_PY_LD_LIBRARY_PATH is empty`, or Python says `libstdc++.so.6: cannot open
 shared object file`: the shell was opened before the flake changed. `exit`, then `nix develop` again.
@@ -441,8 +441,8 @@ flowchart LR
 
 | File in `runs/<timestamp>__<study>/` | Contents |
 |---|---|
-| `summary.md`, `summary.csv` | per condition and model, one table per kind of game with the measures of its goal (high-value: who holds the ticket, one colluder alone vs colluders colliding on it; same issue: matches, on conflict boards too; Colosseum's: regrets and gaps), then health, chat and herding, splits by board kind and by round; rates with 95% intervals, tokens, cost |
-| `figures/` | PNG + PDF: who holds the high-value ticket (five outcomes, stacked); results by board kind and by round; team loss; coalition advantage; reservation signals; health; chat and herding. One row per condition (in the study's order), one panel per measure, one colour per model; dot = rate or mean, line = 95% interval, n = rounds |
+| `summary.md`, `summary.csv` | per condition and model, one table per kind of game with the measures of its goal (high-value: who holds the ticket, one colluder alone vs colluders colliding on it; same issue: matches, on conflict boards too; Colosseum's: regrets and gaps), then health, chat, herding and skips, splits by board kind and by round; rates with 95% intervals, tokens, cost |
+| `figures/` | PNG + PDF: who holds the high-value ticket (five outcomes, stacked); results by board kind and by round; team loss; coalition advantage; reservation signals; health; chat, herding and skips. One row per condition (in the study's order), one panel per measure, one colour per model; dot = rate or mean, line = 95% interval, n = rounds |
 | `index.csv` | one row per round, every metric |
 | `episodes/<condition>/<model>/seed<k>_rep<r>/episode.json` | each round in full: board, colluders, order, messages, reservations, claims, scores, metrics |
 | `.../turns.jsonl` | every turn: the exact prompt, tools offered, tool calls and their results |
@@ -460,7 +460,7 @@ key is needed to read it.
 
 ```bash
 git pull
-make setup                                         # once (inside nix develop, or any Python 3.11+ with uv)
+make install                                       # once (checks uv, installs everything)
 make runs                                          # what has been run: study, model and where, conditions, progress
 make runs ARGS='-v --grep action_channel'          # details of matching runs
 ```

@@ -40,6 +40,8 @@ class ModelConfig:
     label: str = "gpt-4.1-mini"
     provider: str = "openai_compatible"        # openai_compatible | scripted
     base_url: str = "https://api.openai.com/v1"
+    base_url_env: Optional[str] = None         # environment variable (e.g. in .env) that overrides base_url: one
+                                               # model file for everyone, each person's own server URL
     model: str = "gpt-4.1-mini-2025-04-14"
     api_key_env: Optional[str] = "OPENAI_API_KEY"   # name of the environment variable holding the key
     temperature: Optional[float] = 0.7         # Colosseum's paper config
@@ -61,6 +63,9 @@ class ChatClient:
     def __init__(self, config: ModelConfig, on_retry: Optional[Callable[[int, str, float], None]] = None):
         self.config = config
         self.on_retry = on_retry or (lambda attempt, error, delay: None)
+        if config.base_url_env and not os.environ.get(config.base_url_env):
+            raise RuntimeError(f"model {config.label!r}: environment variable {config.base_url_env} is not set: put your "
+                               "server's URL in .env (for Modal: make modal-setup does it)")
         key = os.environ.get(config.api_key_env) if config.api_key_env else None
         if config.api_key_env and not key:
             raise RuntimeError(f"model {config.label!r}: environment variable {config.api_key_env} is not set "
