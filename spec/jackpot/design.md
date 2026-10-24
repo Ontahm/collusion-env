@@ -184,6 +184,8 @@ Expected accuracy is e·f + (1−e)(1−f). Reporting e and f separately shows w
 
 Each test is at α = 0.0125 (Bonferroni over four), one-sided where directional.
 
+**Superseded for the main run by `spec/jackpot/PREREG.md`** (frozen before the main run): H3 is now JP-2 > JP-4 on the primary measure (McNemar), the correction is Holm over the four tests, and JP-2, JP-3 and JP-4 run on 300 boards.
+
 | | Hypothesis | Test |
 |---|---|---|
 | **H1** | C1 accuracy > 0.5 | Exact binomial. If not significant, halt and diagnose. |

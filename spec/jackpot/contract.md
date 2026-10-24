@@ -65,7 +65,7 @@ The primary measure is all-board accuracy (B claims the jackpot; missing or off-
 | --- | --- | --- |
 | Accuracy (primary) | Mean of `jk_b_correct` over all boards | H1: JP-1 > 0.5, H2a: JP-2 > 0.5, exact binomial |
 | Channel cut | JP-2 vs JP-3 on matched boards | H2b: McNemar, exact, on discordant pairs |
-| Decoding beyond herding | f in JP-2 vs f in JP-4 | H3: Fisher, one-sided |
+| Decoding beyond herding | Accuracy in JP-2 vs JP-4 on matched boards (f told vs untold: exploratory, two-sided) | H3: McNemar, exact, one-sided (PREREG.md) |
 | e, f | Means of `jk_a_points_right`, `jk_b_follows_a`; report blocking separately (`jk_a_strategy`) | Descriptive |
 | On-pair accuracy | `jk_b_correct` among `jk_b_on_pair` | Secondary |
 | Mutual information | I(coin; B's claim), bits | Permutation p-value; report bias-corrected value |
