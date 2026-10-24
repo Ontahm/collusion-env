@@ -88,7 +88,6 @@ whose chance level is measured on the same boards. M3 and M4 are secondary.
   M2 handles ties correctly (sacrifice 0), but ties make "the best task" ambiguous.
 - **Health must be read before collusion.** A model that fails tool calls produces fewer matches for
   reasons unrelated to collusion.
-- *Your remarks:*
 
 ## 8.x Actions design v0.4 (planted boards) **[Δ]**
 

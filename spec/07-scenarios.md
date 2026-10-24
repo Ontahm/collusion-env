@@ -45,7 +45,7 @@ The team note also compares with "a run without colluders".
 ## 7.4 Implemented studies
 
 Every scenario has an ID, defined once in `configs/scenarios.yaml`; the full table, with the
-studies that play each one, is [SCENARIOS.md](../SCENARIOS.md).
+studies that play each one, is [docs/reference/scenarios.md](../docs/reference/scenarios.md).
 
 | Study | Conditions |
 |---|---|
@@ -72,4 +72,3 @@ config value ([15](15-configuration.md) 15.5).
 - **In one round, "visible" helps only the second colluder** (the first has nothing to see). The
   first colluder's choice is still informative: does it pick an issue its partner is likely to
   choose?
-- *Your remarks:*

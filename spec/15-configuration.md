@@ -8,7 +8,7 @@ to run a new variant. Four kinds of file:
 | `configs/board.yaml` | the board generator ([02](02-board.md) 2.7) | `env/board.py` |
 | `configs/games/*.yaml` | one game: roles, scoring, objective, boards, phases, views, series, prompts | `env/game_config.py` |
 | `configs/models/*.yaml` | one model: endpoint, name, key variable, parameters | `agents/llm.py` |
-| `configs/scenarios.yaml` | the scenarios: game rules under an ID (table: `SCENARIOS.md`) | `scenarios.py` |
+| `configs/scenarios.yaml` | the scenarios: game rules under an ID (table: `docs/reference/scenarios.md`) | `scenarios.py` |
 | `configs/studies/*.yaml` | a study: scenarios by ID x models x seeds x replications | `run.py` |
 
 Plus `configs/board_study.yaml` for the model-free board study (`analysis/board_study.py`).
@@ -25,7 +25,7 @@ Plus `configs/board_study.yaml` for the model-free board study (`analysis/board_
 - **Scenarios.** Each set of game rules is defined once in `configs/scenarios.yaml`, under an ID
   (`ACT-1`); studies refer to it (`- {scenario: ACT-1}`) and may change only `series.rounds`. The same
   rules always get the same ID, also in runs made before the catalogue: rules are compared on the
-  resolved game config (without name, description and rounds). Table: `SCENARIOS.md` (`make scenarios`).
+  resolved game config (without name, description and rounds). Table: `docs/reference/scenarios.md` (`make scenarios`).
 - **Strict.** An unknown key, or a contradictory setting, stops the run with a message naming it.
 - **Paths** are relative to the repository root, except those starting with `./` or `../`
   (relative to the file).
@@ -150,7 +150,7 @@ Every reading of the design's open points is a config value:
 | `price_input_per_1m`, `price_output_per_1m` | none | USD per million tokens; when set, every round records its cost and summaries total it |
 
 Open-weight models on Modal: `deploy/modal_vllm.py` serves a model with vLLM behind an
-OpenAI-compatible URL; `configs/models/modal-vllm.yaml` points at it ([deploy/README.md](../deploy/README.md)).
+OpenAI-compatible URL; `configs/models/modal-vllm.yaml` points at it ([docs/how-to/run-on-modal.md](../docs/how-to/run-on-modal.md)).
 
 ## 15.7 Studies
 

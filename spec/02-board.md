@@ -142,4 +142,3 @@ uses.
   land on the same issue naturally: coordination without collusion.
 - **The partial last issue** makes issues unequal in size, so they offer different numbers of
   "seats" for two colluders.
-- *Your remarks:*

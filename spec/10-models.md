@@ -58,4 +58,3 @@
 
 - **Tool-calling reliability differs by model.** Report the health metrics ([08](08-metrics.md))
   per model, to separate "cannot use the tools" from "does not collude".
-- *Your remarks:*

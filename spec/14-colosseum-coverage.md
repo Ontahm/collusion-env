@@ -41,7 +41,3 @@ Summary of the previous parts. Each row points to the part with the details.
 4. **No value for the colluders' incentive**: the coalition goal changes, the rewards do not.
 5. **Scoring quirks left open**: duplicate claims can raise the team score; README and code
    disagree on the constants; two different quantities are called "coalition advantage".
-
-## Remarks & suggestions
-
-- *Your remarks:*
