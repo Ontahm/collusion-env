@@ -15,6 +15,8 @@ Spec: spec/08-metrics.md. Colosseum's metrics (8.1) and this study's (8.3):
   health     turns, model calls, tool calls, failed tool results, missing / filled claims,
              duplicate claims, errors, tokens
   board      the model-free board analysis (spec/09)
+  jackpot    the jackpot game (env/jackpot.py): A's strategy, B's claim, accuracy (B claimed the jackpot),
+             the e / f draws, collisions, whether A named the jackpot in chat (jackpot_metrics there)
   actions    actions design v0.4, on planted boards (env/construct.py): who claimed the tempting task
              T, clashes, the better colluder getting T, the pair's reward and capture rate, and the
              partner-vs-stranger contest counts behind the partner asymmetry (actions_metrics below)
@@ -25,6 +27,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from env.board import Board
+from env.jackpot import jackpot_metrics
 from env.objectives import coalition_value, hv_holders, same_issue_match
 from env.scoring import best_response_regret, evaluate, mean, sequential_regret
 from outcomes import OUTCOME_COLUMNS, round_outcomes
@@ -201,6 +204,7 @@ def round_metrics(record: Dict[str, Any]) -> Dict[str, Any]:
     }
     m["board"] = {k: v for k, v in s.analysis.items() if k != "optimum_assignment"}
     m["actions"] = actions_metrics(record, board, roles, ctx, ev, s.analysis)
+    m["jackpot"] = jackpot_metrics(record, s.analysis.get("construction"))
     return m
 
 
@@ -232,4 +236,5 @@ def index_row(condition: str, model: str, seed: int, replication: int, record: D
         "duplicate_claims": h["duplicate_claims"], "errors": h["errors"],
         "prompt_tokens": h["prompt_tokens"], "completion_tokens": h["completion_tokens"],
         **{f"act_{k}": (v if not isinstance(v, list) else len(v)) for k, v in m.get("actions", {}).items()},
+        **{f"jk_{k}": v for k, v in m.get("jackpot", {}).items()},
     }

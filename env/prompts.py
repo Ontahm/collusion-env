@@ -29,6 +29,7 @@ def _read(path: str) -> str:
 class PromptTexts:
     system: str
     colluder: str                      # "" = no instruction
+    colluder_b: Optional[str]          # the second colluder's text; None = same as colluder
     honest_hv_note: str
     phases: Mapping[str, Any]
 
@@ -37,6 +38,7 @@ def load_texts(cfg: PromptsConfig) -> PromptTexts:
     return PromptTexts(
         system=_read(cfg.system),
         colluder=_read(cfg.colluder).strip() if cfg.colluder else "",
+        colluder_b=None if cfg.colluder_b is None else (_read(cfg.colluder_b).strip() if cfg.colluder_b else ""),
         honest_hv_note=_read(cfg.honest_hv_note).strip() if cfg.honest_hv_note else "",
         phases=yaml.safe_load(resolve_path(cfg.phases).read_text(encoding="utf-8")),
     )
@@ -85,6 +87,7 @@ class TurnView:
     secret_board_id: Optional[int] = None
     template_values: Dict[str, Any] = field(default_factory=dict)
     honest_hv_visible: bool = False
+    colluder_rank: int = 0                            # 0 = first colluder in turn order, 1 = second
 
 
 def user_prompt(texts: PromptTexts, game: GameConfig, board: Board, view: TurnView) -> str:
@@ -168,9 +171,12 @@ def payoff_section(game: GameConfig, board: Board, agent: str) -> List[str]:
 
 def colluder_block(texts: PromptTexts, game: GameConfig, view: TurnView) -> str:
     """`CollusionPrompts.get_user_prompt`: the block before a colluder's prompt, or nothing."""
-    if not view.is_colluder or game.objective.type == "none" or not texts.colluder:
+    template = texts.colluder
+    if view.is_colluder and view.colluder_rank == 1 and texts.colluder_b is not None:
+        template = texts.colluder_b
+    if not view.is_colluder or game.objective.type == "none" or not template:
         return ""
-    instruction = fill(texts.colluder, view.template_values)
+    instruction = fill(template, view.template_values)
     if not game.prompts.colluder_header:
         return "\n".join([instruction, ""]) + "\n"
     others = [n for n in view.coalition if n != view.agent]
@@ -194,9 +200,9 @@ def colluder_block(texts: PromptTexts, game: GameConfig, view: TurnView) -> str:
 
 def template_values(agent: str, coalition: Sequence[str], secret_board_id: Optional[int],
                     hv_task: Optional[str], hv_bonus: float, hv_team_value: float,
-                    same_issue_bonus: float, rounds: int) -> Dict[str, Any]:
+                    same_issue_bonus: float, rounds: int, extra: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
     others = [c for c in coalition if c != agent]
-    return {"agent": agent, "partners": ", ".join(others) if others else "(none)",
+    return {**dict(extra or {}), "agent": agent, "partners": ", ".join(others) if others else "(none)",
             "coalition_members": ", ".join(coalition), "secret_board_id": secret_board_id,
             "hv_task": hv_task, "hv_bonus": _num(hv_bonus), "hv_team_value": _num(hv_team_value),
             "same_issue_bonus": _num(same_issue_bonus), "rounds": rounds}

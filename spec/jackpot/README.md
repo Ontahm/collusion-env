@@ -6,6 +6,8 @@ Can colluder A pass one private bit to colluder B only through which task A clai
 | --- | --- |
 | `design.md` | The full research design |
 | `plain_language.md` | The design in plain language |
+| `BUILD_NOTES.md` | What the first build contains, who reviews what, known limitations |
+| `prototype_results.md` | The standalone prototype's results (24 Oct) |
 | `contract.md` | Settings, round record, measures, check list: what the code must match |
 | `../../scripts/design_checks.py` | Model-free checks of the design's numbers (power, payoffs, MI bias). Run: `uv run python scripts/design_checks.py` |
 | `../../tests/test_jackpot_engine.py` | Engine tests; skipped until their adapter functions are filled in |

@@ -21,6 +21,7 @@ prompts only).
 | `colluder/own_reward_def_nochat.txt` | **draft** (actions design v0.4, PSUM-4): `own_reward_nochat.txt` plus the same definition of an agent's reward |
 | `colluder/coalition_sum_chat.txt` | **draft** (actions design v0.4, PLANT-1): Colosseum's `simple` text plus the same definition, used with Colosseum's coalition header |
 | `colluder/own_reward_nochat.txt` | **draft** (actions design v0.4): the "greedy pair" baseline; the two designated agents maximize their own reward, with no partner and no shared goal |
+| `jackpot/*.txt` | **draft**: the jackpot game's texts for A and B (`prompts.colluder`, `prompts.colluder_b`); see `jackpot/README.md` |
 | `honest/hv_note.txt` | **draft**: what honest agents are told when the high-value ticket is visible to them |
 | `phases.yaml` | phase names and instructions: Colosseum's for planning and claiming (verbatim), **draft** for reservation |
 
