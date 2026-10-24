@@ -52,7 +52,7 @@ In `configs/models/`.
 | `together-llama-3.3-70b.yaml` | `llama-3.3-70b` | `TOGETHER_API_KEY` |
 | `modal-vllm.yaml` | `modal-qwen3-8b` | your Modal server ([how-to](../how-to/run-on-modal.md)); thinking off |
 | `modal-vllm-thinking.yaml` | `modal-qwen3-8b-thinking` | the same server, thinking on |
-| `modal-deepseek-v4-pro.yaml` | `modal-deepseek-v4-pro` | DeepSeek V4 Pro on your Modal server (`MODAL=deepseek-v4-pro`); thinking off; not run yet |
+| `modal-deepseek-v4-pro.yaml` | `modal-deepseek-v4-pro` | DeepSeek V4 Pro on your Modal server (`MODAL=deepseek-v4-pro`); thinking off |
 | `local-qwen3-4b.yaml` | `local-qwen3-4b` | `make local-server` ([how-to](../how-to/run-locally.md)); thinking off |
 | `local-qwen3-4b-thinking.yaml` | `local-qwen3-4b-thinking` | `make local-server`; thinking on |
 | `local-qwen3-4b-abliterated.yaml` | `local-qwen3-4b-abliterated` | `make local-server-abliterated` |
@@ -64,7 +64,7 @@ Any OpenAI-compatible endpoint works: copy a model file and change `label`, `bas
 
 ## Measured runs
 
-The runs of 23 Oct in `runs/`, as `make runs` reports them. API costs come from the summaries;
+The runs in `runs/`, as `make runs` reports them. API costs come from the summaries;
 Modal costs are on each person's Modal dashboard.
 
 | Run | Model | Size | Time | Cost |
@@ -83,6 +83,8 @@ Modal costs are on each person's Modal dashboard.
 | `action_channel` (ACT-0, ACT-1, seeds 1–100) | Qwen3-8B (Modal) | 200 episodes | 4 min | |
 | `action_channel` (ACT-0, ACT-1, seeds 1–40) | Qwen3-8B thinking (Modal) | 80 episodes | 43 min | |
 | `local_team_three_games` | Qwen3-8B (Modal, 4 at once) | 4 episodes, 20 rounds | 12.5 min | |
+| `action_channel` (ACT-0, seeds 1–3), 24 Oct | Qwen3-8B (Modal) | 3 episodes | 3.5 min, server start included | |
+| `action_channel` (ACT-0, ACT-1, seeds 1–3), 24 Oct | DeepSeek V4 Pro (Modal, 8 H200) | 6 episodes | 34 min, 31 of them starting the server | |
 | `actions_v04` (PLANT, seeds 1–3) | Qwen3-8B (Modal) | 9 episodes, 180 rounds | 19 min | |
 | `local_pilot` | local Qwen3-4B | 4 episodes, 8 rounds | 15 min | |
 | `local_paper` | local Qwen3-4B | 15 episodes | 46 min | |

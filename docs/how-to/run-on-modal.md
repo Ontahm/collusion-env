@@ -1,8 +1,8 @@
 # Run a study on Modal
 
 An open-weight model on [Modal](https://modal.com), which rents GPUs by the second: Qwen3-8B by
-default, or DeepSeek V4 Pro. The environment calls it like any OpenAI-compatible API. Tested on 23
-Oct 2026 with Qwen3-8B on one L40S; DeepSeek V4 Pro has not been run yet.
+default, or DeepSeek V4 Pro. The environment calls it like any OpenAI-compatible API. Tested with
+Qwen3-8B on one L40S (23 Oct 2026) and DeepSeek V4 Pro on 8 H200 (24 Oct).
 
 Modal only runs models whose weights are public. gpt-4.1-mini is not: use
 [OpenAI](run-on-openai.md) for it.
@@ -50,7 +50,9 @@ Everyone uses their own Modal account. The model file is shared; your URL and ke
 
 DeepSeek V4 Pro's weights are 893 GB. The first `make modal-run` downloads them on a CPU container,
 where no GPU is billed, into the Modal volume that keeps them for later runs: 63 minutes on 24 Oct.
-The server may then take up to 60 minutes to start.
+Every start of the server is then billed on 8 H200: on 24 Oct it took about 31 minutes (about 14 to
+load the weights, 17 for vLLM's setup), about $19 at Modal's price. Run several studies in one
+session to pay for one start only.
 
 ## What you need
 
@@ -63,8 +65,9 @@ The server may then take up to 60 minutes to start.
 - `modal run deploy/modal_vllm.py::download` fetches the weights into a Modal volume, on CPU. Once
   they are there, it only checks them.
 - `modal deploy` builds an image (CUDA, vLLM) and registers a URL. No GPU runs yet.
-- The first request starts a container on a GPU. vLLM loads the model, then answers: about 2.5
-  minutes when the weights are cached, longer the first time (Qwen3-8B: 16 GB to download).
+- The first request starts a container on a GPU. vLLM loads the model, then answers: for Qwen3-8B,
+  about 2.5 minutes when the weights are cached, longer the first time (16 GB to download); for
+  DeepSeek V4 Pro, about 31 minutes.
 - 15 minutes after the last request, the container stops and billing stops.
 
 Runs and `make check-model` wait for the start, up to `startup_wait_s` in the model file (20 minutes
@@ -79,6 +82,12 @@ Measured on 23 Oct (Qwen3-8B, one L40S, server already started):
 | `modal_paper.yaml` (paper conditions, seeds 1–5) | 15 | 7 min (8) | 3.9 M / 77 k |
 | `action_channel.yaml` | 120 | 1.5 min (16) | 0.9 M / 28 k |
 | `local_team_three_games.yaml` (5 rounds per game) | 4 | 12.5 min (4) | 1.7 M / 37 k |
+
+Measured on 24 Oct (DeepSeek V4 Pro, 8 H200, server already started):
+
+| Study | Episodes | Time (episodes at once) | Tokens in / out |
+|---|---|---|---|
+| `action_channel.yaml` (ACT-0 and ACT-1, seeds 1–3) | 6 | 2.7 min (6) | 79 k / 6.7 k |
 
 An episode plays its turns one after another, so long episodes are slow on any GPU. Run several
 studies in one session to pay for one start only.

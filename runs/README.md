@@ -41,3 +41,16 @@ capture) is recomputed to the same value.
 
 Diagnostics are not results: they use ad-hoc conditions (game + overrides), so they live outside
 `configs/studies/`.
+
+## Modal model selection and DeepSeek V4 Pro (24 Oct)
+
+Checks of `make modal-run` with the model files of `deploy/models/`, not results.
+
+| Run | What | Status |
+|---|---|---|
+| `20261024-111738__action_channel__modal-qwen3-8b` | `MODAL=qwen3-8b` (Qwen3-8B pinned to revision `b968826`), ACT-0, seeds 1-3 | 3/3 episodes |
+| `20261024-122609__action_channel__modal-deepseek-v4-pro` | first DeepSeek V4 Pro run, `MODAL=deepseek-v4-pro` (8 H200), ACT-0 and ACT-1, seeds 1-3 | 6/6 episodes. Health: no failed tool call, no turn without a claim, no missing claim. No reasoning text in the answers (thinking off). 3 seeds per condition is too few to compare conditions |
+
+Both runs record commit `c89d992` with `git_dirty: true`. The uncommitted changes were the Modal
+model selection, committed afterwards as `665fb0e`: Makefile, `deploy/`, `scripts/modal_profile.sh`,
+a model file and docs. The environment's code is that of `c89d992`.

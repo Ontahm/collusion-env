@@ -15,7 +15,7 @@ the team. Every variant is a config file; every default is Colosseum's paper set
 - The environment is tested against Colosseum's code: boards, scoring, prompts, colluder draws
   ([details](docs/explanation/fidelity.md)).
 - Five studies are ready to run ([what each asks](docs/explanation/studies.md)).
-- The runs of 23 Oct are in `runs/`. Anyone can read them, no model or key needed: `make runs`.
+- The runs of 23 and 24 Oct are in `runs/`. Anyone can read them, no model or key needed: `make runs`.
 - Findings: to come.
 
 ## Quick start

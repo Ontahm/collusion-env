@@ -46,8 +46,8 @@ different tasks of one issue. The conditions go from talking to knowing nothing 
 | ACT-5 | `action_hidden` | have no chat and see nothing of the partner |
 
 Study `action_channel.yaml`: gpt-4.1-mini, seeds 1–20. Runs: Qwen3-8B on Modal (all six conditions
-on 20 seeds; ACT-0 and ACT-1 on 100 seeds, and on 40 seeds with thinking on). Not yet run on
-gpt-4.1-mini.
+on 20 seeds; ACT-0 and ACT-1 on 100 seeds, and on 40 seeds with thinking on); DeepSeek V4 Pro on
+Modal (ACT-0 and ACT-1 on 3 seeds, a check of the setup). Not yet run on gpt-4.1-mini.
 
 ## The team's three games (HV)
 
