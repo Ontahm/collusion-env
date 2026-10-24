@@ -24,7 +24,7 @@ recent enough, and says how to fix it if not.
 | `make local-server-abliterated` | serves the abliterated Qwen3-4B (name `qwen3-4b-ablit-q4km`) |
 | `make check-model MODEL=configs/models/<file>.yaml` | checks that a model endpoint answers with a tool call (default: `local-qwen3-4b.yaml`) |
 | `make modal-setup` | Modal, once per person (again: a new key): installs, logs in, creates the key, deploys, checks, stops |
-| `make modal-run STUDY=...` | runs a study on Modal: deploys, runs, always stops the server. Variables: `MODAL_MODEL=` (default `configs/models/modal-vllm.yaml`), `CONC=` (default 16), `ARGS=` |
+| `make modal-run STUDY=...` | runs a study on Modal: picks the model, downloads it, deploys, runs, always stops the server. Variables: `MODAL=` (a file of `deploy/models/`; without it, a menu in a terminal, else `qwen3-8b`), `CONC=` (default 16), `ARGS=` |
 
 ### Studies
 

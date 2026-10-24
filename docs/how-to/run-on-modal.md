@@ -1,8 +1,8 @@
 # Run a study on Modal
 
-An open-weight model (Qwen3-8B by default) on [Modal](https://modal.com), which rents GPUs by the
-second. The environment calls it like any OpenAI-compatible API. Tested on 23 Oct 2026 with Qwen3-8B
-on one L40S.
+An open-weight model on [Modal](https://modal.com), which rents GPUs by the second: Qwen3-8B by
+default, or DeepSeek V4 Pro. The environment calls it like any OpenAI-compatible API. Tested on 23
+Oct 2026 with Qwen3-8B on one L40S; DeepSeek V4 Pro has not been run yet.
 
 Modal only runs models whose weights are public. gpt-4.1-mini is not: use
 [OpenAI](run-on-openai.md) for it.
@@ -10,8 +10,9 @@ Modal only runs models whose weights are public. gpt-4.1-mini is not: use
 ## Quick start
 
 ```bash
-make modal-setup                                              # once per person
-make modal-run STUDY=configs/studies/action_channel.yaml      # any study
+make modal-setup                                                          # once per person
+make modal-run STUDY=configs/studies/action_channel.yaml                  # asks which model
+make modal-run STUDY=configs/studies/action_channel.yaml MODAL=qwen3-8b   # or name it
 ```
 
 `make modal-setup`:
@@ -25,11 +26,12 @@ make modal-run STUDY=configs/studies/action_channel.yaml      # any study
 
 Run it again to get a new key.
 
-`make modal-run` deploys, runs the study, then stops the server, also on error or Ctrl+C.
+`make modal-run` downloads the model's weights (on a CPU container, the first time only), deploys,
+runs the study, then stops the server, also on error or Ctrl+C.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MODAL_MODEL` | `configs/models/modal-vllm.yaml` | model file; `modal-vllm-thinking.yaml` for thinking on |
+| `MODAL` | asked in a terminal, else `qwen3-8b` | the model: a file of `deploy/models/` (below) |
 | `CONC` | 16 | episodes played at once |
 | `ARGS` | | more run options, for example `ARGS='--seeds 1-3'` or `ARGS='--only baseline,secret_chat'` (condition names) |
 
@@ -37,6 +39,18 @@ Stop by hand: `modal app stop collusion-vllm`.
 
 Everyone uses their own Modal account. The model file is shared; your URL and key stay in your
 `.env`.
+
+## Models
+
+| `MODAL=` | Model | GPU | Modal price (Oct 2026) |
+|---|---|---|---|
+| `qwen3-8b` | Qwen3-8B, thinking off | 1 L40S | $1.95/h |
+| `qwen3-8b-thinking` | Qwen3-8B, thinking on (same server) | 1 L40S | $1.95/h |
+| `deepseek-v4-pro` | DeepSeek V4 Pro, release of 13 Aug 2026, thinking off | 8 H200 | $36.32/h |
+
+DeepSeek V4 Pro's weights are 893 GB. The first `make modal-run` downloads them on a CPU container,
+where no GPU is billed, into the Modal volume that keeps them for later runs: 63 minutes on 24 Oct.
+The server may then take up to 60 minutes to start.
 
 ## What you need
 
@@ -46,13 +60,15 @@ Everyone uses their own Modal account. The model file is shared; your URL and ke
 
 ## What happens on Modal
 
+- `modal run deploy/modal_vllm.py::download` fetches the weights into a Modal volume, on CPU. Once
+  they are there, it only checks them.
 - `modal deploy` builds an image (CUDA, vLLM) and registers a URL. No GPU runs yet.
 - The first request starts a container on a GPU. vLLM loads the model, then answers: about 2.5
   minutes when the weights are cached, longer the first time (Qwen3-8B: 16 GB to download).
 - 15 minutes after the last request, the container stops and billing stops.
 
-Runs and `make check-model` wait for the start, up to 20 minutes (`startup_wait_s` in the model
-file), and print `'<model>' is up` when ready.
+Runs and `make check-model` wait for the start, up to `startup_wait_s` in the model file (20 minutes
+for Qwen, 60 for DeepSeek), and print `'<model>' is up` when ready.
 
 ## How long a study takes
 
@@ -77,12 +93,15 @@ modal app logs collusion-vllm      # the server's log
 
 The Modal dashboard shows whether a container is running and what each session cost.
 
-## Use another model
+## Add a model
 
-Server settings are read from your shell at deploy time:
+Each file of `deploy/models/` holds one server's settings, read when it deploys, and the model file
+the runs use. To add a model, copy a file, change it, then `make modal-run MODAL=<file name>`.
 
-| Variable | Default | Meaning |
+| Setting | Default | Meaning |
 |---|---|---|
+| `DESCRIPTION` | | shown in the menu |
+| `MODEL_CONFIG` | | the model file runs use (`configs/models/`); its `model:` must equal `SERVED_NAME` |
 | `MODEL` | `Qwen/Qwen3-8B` | Hugging Face model ID |
 | `MODEL_REVISION` | `main` | the model's commit: pin it for any run you report |
 | `SERVED_NAME` | = `MODEL` | the name the API exposes (`model:` in the model file) |
@@ -91,9 +110,11 @@ Server settings are read from your shell at deploy time:
 | `GPU` | `L40S:1` | Modal GPU type and count |
 | `MAX_MODEL_LEN` | `16384` | context length (the longest prompt measured is 7,846 tokens) |
 | `REGION` | `us-east` | where requests are routed |
+| `VLLM_VERSION` | `0.21.0` | vLLM release |
+| `VLLM_ARGS` | | more `vllm serve` options, for example `--tensor-parallel-size 8` for 8 GPUs |
+| `STARTUP_MINUTES` | 20 | how long the server may take to start; set `startup_wait_s` in the model file to match |
 
-After changing the model, set `model:` in the model file to match. A wrong tool parser shows as
-turns without tool calls: `make check-model` fails.
+A wrong tool parser shows as turns without tool calls: `make check-model` fails.
 
 Thinking: `modal-vllm.yaml` turns Qwen3's thinking off; `modal-vllm-thinking.yaml` turns it on.
 
@@ -113,6 +134,7 @@ modal setup                    # log in
 KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
 modal secret create collusion-vllm VLLM_API_KEY="$KEY" --force
 echo "MODAL_VLLM_API_KEY=$KEY" >> .env       # replace an older key line instead, if there is one
+set -a; . deploy/models/qwen3-8b.env; set +a # the server's settings
 modal deploy deploy/modal_vllm.py
 ```
 
@@ -154,7 +176,10 @@ Never paste the key in a chat, an issue or a commit. More: [SECURITY.md](../../S
 
 | File | Role |
 |---|---|
-| `deploy/modal_vllm.py` | the Modal app: image, GPU, caches, vLLM command |
-| `configs/models/modal-vllm.yaml` | how runs call it: URL and key from `.env`, thinking off |
+| `deploy/modal_vllm.py` | the Modal app: image, GPU, caches, vLLM command, download step |
+| `deploy/models/*.env` | one file per model: server settings and the model file runs use |
+| `scripts/modal_profile.sh` | picks the model for `make modal-run` (name or menu) |
+| `configs/models/modal-vllm.yaml` | how runs call Qwen3-8B: URL and key from `.env`, thinking off |
 | `configs/models/modal-vllm-thinking.yaml` | the same server, thinking on |
+| `configs/models/modal-deepseek-v4-pro.yaml` | how runs call DeepSeek V4 Pro, thinking off |
 | `configs/studies/modal_paper.yaml` | the `local_paper` boards on this model |

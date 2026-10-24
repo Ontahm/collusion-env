@@ -16,8 +16,8 @@ CTX ?= 12288
 QWEN_URL := https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf
 ABLIT_URL := https://huggingface.co/Mungert/Qwen3-4B-abliterated-GGUF/resolve/56175aed285a884480f49bb18d2a1b0e05a7749f/Qwen3-4B-abliterated-q4_k_m.gguf
 ARGS ?=
-# Modal (docs/how-to/run-on-modal.md): which model file to deploy and run, episodes in parallel.
-MODAL_MODEL ?= configs/models/modal-vllm.yaml
+# Modal (docs/how-to/run-on-modal.md): which model (deploy/models/<name>.env; empty: a menu), episodes in parallel.
+MODAL ?=
 CONC ?= 16
 LOG ?=
 LOG_ARG := $(if $(LOG),--log-level $(LOG),)
@@ -107,6 +107,7 @@ modal-setup: check-env ## Modal, once per person (again = new key): install, log
 	command -v modal >/dev/null || { echo "[modal] installing the modal command"; uv tool install modal; }; \
 	[ -f "$$HOME/.modal.toml" ] || { echo "[modal] logging in (opens the browser)"; modal setup; }; \
 	touch .env; chmod 600 .env; \
+	set -a; . ./deploy/models/qwen3-8b.env; set +a; \
 	KEY=$$($(PY) -c 'import secrets; print(secrets.token_urlsafe(32))'); \
 	modal secret create collusion-vllm VLLM_API_KEY="$$KEY" --force >/dev/null; \
 	{ grep -v '^MODAL_VLLM_API_KEY=' .env || true; echo "MODAL_VLLM_API_KEY=$$KEY"; } > .env.tmp; mv .env.tmp .env; chmod 600 .env; \
@@ -116,14 +117,19 @@ modal-setup: check-env ## Modal, once per person (again = new key): install, log
 	[ -n "$$URL" ] || { echo "[modal] deploy failed (see above)"; exit 1; }; \
 	{ grep -v '^MODAL_VLLM_BASE_URL=' .env || true; echo "MODAL_VLLM_BASE_URL=$$URL/v1"; } > .env.tmp; mv .env.tmp .env; chmod 600 .env; \
 	echo "[modal] your server URL is saved in .env; waiting for the model (a cold start takes a few minutes)"; \
-	$(PY) -m agents.check $(MODAL_MODEL); \
+	$(PY) -m agents.check $$MODEL_CONFIG; \
 	CODE=$$(curl -s -o /dev/null -w '%{http_code}' "$$URL/v1/models"); \
 	[ "$$CODE" = 401 ] || { echo "[modal] DANGER: a request without the key got HTTP $$CODE, not 401: do not use this endpoint"; exit 1; }; \
 	echo "[modal] protected (requests without the key get 401). Ready: make modal-run STUDY=configs/studies/<study>.yaml"
 
-modal-run: check-env ## Run STUDY on Modal: deploy, run, always stop the server (MODAL_MODEL=, CONC=, ARGS=)
+modal-run: check-env ## Run STUDY on Modal: pick the model (MODAL=<name>, or a menu), download it, deploy, run, always stop the server (CONC=, ARGS=)
 	@case "$(origin STUDY)" in "command line"|environment) ;; *) echo "which study? make modal-run STUDY=configs/studies/<study>.yaml"; exit 1;; esac
+	@[ -z "$(MODAL_MODEL)" ] || { echo "MODAL_MODEL is replaced by MODAL=<name> (a file of deploy/models/); without it, make modal-run asks"; exit 1; }
 	@export PATH="$$HOME/.local/bin:$$PATH"; \
+	PROFILE=$$(sh scripts/modal_profile.sh "$(MODAL)") || exit 1; \
+	set -a; . "./$$PROFILE"; set +a; \
+	echo "[modal] $$DESCRIPTION, GPU $$GPU ($$PROFILE)"; \
 	trap 'echo "[modal] stopping the server"; modal app stop collusion-vllm --yes || true' EXIT; trap 'exit 130' INT TERM; \
+	modal run deploy/modal_vllm.py::download || exit 1; \
 	modal deploy deploy/modal_vllm.py || exit 1; \
-	$(PY) -m run $(STUDY) --use-model $(MODAL_MODEL) --concurrency $(CONC) --yes $(ARGS)
+	$(PY) -m run $(STUDY) --use-model $$MODEL_CONFIG --concurrency $(CONC) --yes $(ARGS)

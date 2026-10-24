@@ -4,9 +4,8 @@ Not part of the environment: it needs the `modal` package and a Modal account on
 that deploys (`pip install modal`, then `modal setup`). The environment calls the result like any
 API (configs/models/modal-vllm.yaml). Follows Modal's vLLM example (modal.com/docs/examples/vllm_inference).
 
-    export MODEL=Qwen/Qwen3-8B TOOL_PARSER=hermes REASONING_PARSER=qwen3 GPU=L40S:1   # optional
-    make modal-setup        # once per person: key, deploy, checks (Makefile)
-    modal deploy deploy/modal_vllm.py
+    make modal-setup                               # once per person: key, deploy, checks (Makefile)
+    make modal-run STUDY=... MODAL=deepseek-v4-pro # the settings of deploy/models/<name>.env
 
 The deploy prints the URL, https://<workspace>--collusion-vllm-server.<region>.modal.direct ;
 the base URL for the model config is that URL followed by /v1. Settings are read from the
@@ -20,6 +19,12 @@ environment when you deploy and baked into the image:
     GPU               Modal GPU spec                              (default L40S:1)
     MAX_MODEL_LEN     context length                              (default 16384)
     REGION            routing region                              (default us-east)
+    VLLM_VERSION      vLLM release                                (default 0.21.0)
+    VLLM_ARGS         more `vllm serve` arguments, e.g. --tensor-parallel-size 8 (default none)
+    STARTUP_MINUTES   how long the server may take to start       (default 20)
+
+`modal run deploy/modal_vllm.py::download` fetches the weights into the cache volume on a CPU
+container, so GPUs are not billed while a large model downloads (make modal-run does it first).
 
 The endpoint requires the bearer key stored in the `collusion-vllm` Modal secret (read by vLLM from
 the VLLM_API_KEY environment variable, so it never appears in the logged arguments);
@@ -27,6 +32,7 @@ put the same key in .env as MODAL_VLLM_API_KEY. The server scales to zero after 
 """
 
 import os
+import shlex
 
 import modal
 
@@ -38,17 +44,20 @@ REASONING_PARSER = os.environ.get("REASONING_PARSER", "qwen3")
 GPU = os.environ.get("GPU", "L40S:1")
 MAX_MODEL_LEN = os.environ.get("MAX_MODEL_LEN", "16384")
 REGION = os.environ.get("REGION", "us-east")
+VLLM_VERSION = os.environ.get("VLLM_VERSION", "0.21.0")
+VLLM_ARGS = os.environ.get("VLLM_ARGS", "")
+STARTUP_MINUTES = int(os.environ.get("STARTUP_MINUTES", "20"))
 PORT = 8000
 MINUTES = 60
 
 image = (
     modal.Image.from_registry("nvidia/cuda:12.9.0-devel-ubuntu22.04", add_python="3.12")
     .entrypoint([])
-    .uv_pip_install("vllm==0.21.0")
+    .uv_pip_install(f"vllm=={VLLM_VERSION}")
     .env({"HF_XET_HIGH_PERFORMANCE": "1",
           "SERVE_MODEL": MODEL, "SERVE_REVISION": MODEL_REVISION, "SERVE_NAME": SERVED_NAME,
           "SERVE_TOOL_PARSER": TOOL_PARSER, "SERVE_REASONING_PARSER": REASONING_PARSER,
-          "SERVE_MAX_MODEL_LEN": MAX_MODEL_LEN})
+          "SERVE_MAX_MODEL_LEN": MAX_MODEL_LEN, "SERVE_VLLM_ARGS": VLLM_ARGS})
 )
 hf_cache = modal.Volume.from_name("huggingface-cache", create_if_missing=True)
 vllm_cache = modal.Volume.from_name("vllm-cache", create_if_missing=True)
@@ -59,7 +68,7 @@ app = modal.App("collusion-vllm")
     image=image,
     gpu=GPU,
     scaledown_window=15 * MINUTES,
-    startup_timeout=20 * MINUTES,
+    startup_timeout=STARTUP_MINUTES * MINUTES,
     volumes={"/root/.cache/huggingface": hf_cache, "/root/.cache/vllm": vllm_cache},
     secrets=[modal.Secret.from_name("collusion-vllm")],
     port=PORT,
@@ -80,6 +89,7 @@ class Server:
                "--enable-auto-tool-choice", "--tool-call-parser", os.environ["SERVE_TOOL_PARSER"]]
         if os.environ.get("SERVE_REASONING_PARSER"):
             cmd += ["--reasoning-parser", os.environ["SERVE_REASONING_PARSER"]]
+        cmd += shlex.split(os.environ.get("SERVE_VLLM_ARGS", ""))
         # The key reaches vLLM through the VLLM_API_KEY environment variable (the Modal secret), never
         # as --api-key: vLLM prints its command-line arguments, key included, to the logs.
         assert os.environ.get("VLLM_API_KEY"), "the collusion-vllm secret must define VLLM_API_KEY"
@@ -89,3 +99,13 @@ class Server:
     @modal.exit()
     def stop(self):
         self.process.terminate()
+
+
+@app.function(image=image, volumes={"/root/.cache/huggingface": hf_cache}, cpu=8, memory=32768,
+              timeout=180 * MINUTES)
+def download():
+    """Fetch the weights into the cache volume, on CPU: no GPU is billed while they download."""
+    from huggingface_hub import snapshot_download
+
+    snapshot_download(os.environ["SERVE_MODEL"], revision=os.environ["SERVE_REVISION"])
+    hf_cache.commit()
