@@ -8,6 +8,11 @@ Policies (`policy` in the model config):
   colluder honest agents are greedy; colluders follow the objective in the simplest way:
            high_value_ticket: take the ticket if it is free, else greedy;
            same_issue: the second colluder joins the issue it sees its partner on, else greedy.
+  oracle_pair   honest agents are greedy; each colluder takes its part of the pair of free tasks
+           (self, partner) with the highest summed reward. If it sees its partner's claim, it
+           takes its best task given that claim. Upper bound for coalition_reward collusion.
+  team_optimal  every agent takes its task in the team optimum (exact_optimum) if it is still
+           free, else greedy. The team-player floor.
 These are test doubles, not models of behaviour.
 """
 
@@ -15,8 +20,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+import itertools
+
 from env.game import Turn
-from env.scoring import evaluate
+from env.scoring import evaluate, exact_optimum
 
 
 def _reward(info: Dict[str, Any], agent: str, task: str) -> float:
@@ -68,7 +75,44 @@ def colluder_choice(turn: Turn) -> Optional[str]:
     return greedy_choice(turn)
 
 
-POLICIES = {"greedy": greedy_choice, "colluder": colluder_choice}
+def _ctx(info: Dict[str, Any]):
+    return info["objective"].scoring_context(_scoring(info), info["roles"])
+
+
+def oracle_pair_choice(turn: Turn) -> Optional[str]:
+    info = turn.info
+    roles, board, claims = info["roles"], info["board"], info["claims"]
+    if not roles.is_colluder(turn.agent):
+        return greedy_choice(turn)
+    ctx = _ctx(info)
+    me = turn.agent
+    pending = [p for p in roles.partner(me) if p not in claims]
+    if not pending:          # partners have acted: their rewards are fixed, so take my best free task
+        return greedy_choice(turn)
+    free = [t.id for t in board.tasks if t.id not in _taken(info)]
+    partner = pending[0]                  # plan with the next partner to act (two-colluder case)
+    best, best_value = None, float("-inf")
+    for mine, theirs in itertools.product(free + [None], free + [None]):
+        if mine is not None and mine == theirs:
+            continue
+        rewards = evaluate(board, {me: mine, partner: theirs}, ctx).rewards
+        value = rewards[me] + rewards[partner]
+        if value > best_value:
+            best, best_value = mine, value
+    return best
+
+
+def team_optimal_choice(turn: Turn) -> Optional[str]:
+    info = turn.info
+    optimum = exact_optimum(info["board"], _ctx(info))
+    mine = optimum.assignment.get(turn.agent) if optimum else None
+    if mine is not None and mine not in _taken(info):
+        return mine
+    return greedy_choice(turn)
+
+
+POLICIES = {"greedy": greedy_choice, "colluder": colluder_choice,
+            "oracle_pair": oracle_pair_choice, "team_optimal": team_optimal_choice}
 
 
 class ScriptedAgent:

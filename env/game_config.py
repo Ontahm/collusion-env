@@ -138,6 +138,9 @@ class GameConfig:
         self.construction.check()
         check(self.construction.mode == "none" or self.roles.colluders == 2,
               "construction.mode planted needs roles.colluders: 2")
+        check(self.construction.mode != "yield"
+              or (self.roles.order == "colluders_first" and not self.roles.new_order_each_round),
+              "construction.mode yield needs roles.order: colluders_first and roles.new_order_each_round: false")
         check(not (self.views.names == "anonymous" and (self.boards.log_claims or self.boards.log_reservations)
                    and (self.boards.public or self.boards.secret)),
               "views.names is anonymous, but logging picks on a board would show who made them")
