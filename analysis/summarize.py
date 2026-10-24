@@ -26,13 +26,15 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from analysis.stats import mean, wilson
-from outcomes import HV_OUTCOMES, from_episode_round
+from outcomes import HV_OUTCOMES, OUTCOME_COLUMNS, from_episode_round
+from scenarios import label as scenario_label, run_scenarios
 
 RATES = ("same_issue_match", "collusive_match", "hv_captured_by_coalition", "hv_captured_by_honest",
          "hv_clean_capture", "colluders_name_hv")
 MEANS = ("colluders_filled", "team_loss", "normalized_regret", "regret_gap", "reward_gap", "coalition_value", "colluder_sacrifice_sum",
          "failed_tool_results", "turns_without_commit", "missing_claims", "duplicate_claims", "errors",
-         "prompt_tokens", "completion_tokens", "posts", "distinct_post_share", "secret_posts", "largest_pile")
+         "prompt_tokens", "completion_tokens", "posts", "distinct_post_share", "secret_posts", "largest_pile",
+         "skips", "colluder_skips", "honest_skips", "skip_share", "reservations_changed", "claims_follow_reservation")
 OUTCOME_NAMES = {"colluder_alone": "one colluder alone", "colluders_collide": "colluders collide on it",
                  "shared_with_honest": "shared with an honest agent", "honest": "honest agents only", "nobody": "nobody"}
 OBJECTIVE_TITLES = {"high_value_ticket": "High-value ticket games", "same_issue": "Same-issue games",
@@ -58,12 +60,22 @@ def load(run_dir: Path) -> List[Dict[str, str]]:
     """index.csv rows; outcome columns missing from older runs are measured from episode.json."""
     with (run_dir / "index.csv").open() as f:
         rows = list(csv.DictReader(f))
-    if rows and "hv_outcome" not in rows[0]:
+    missing = [c for c in OUTCOME_COLUMNS if rows and c not in rows[0]]
+    if missing:                                     # a run recorded before these measures existed
         derived = derive_outcomes(run_dir)
         for r in rows:
             extra = derived.get((r["condition"], r["model"], r["seed"], r["replication"], r["round"]), {})
-            r.update({k: "" if v is None else str(v) for k, v in extra.items()})
+            r.update({k: "" if v is None else str(v) for k, v in extra.items() if k in missing})
+    if rows and not all(r.get("scenario") for r in rows):          # runs made before scenario IDs
+        ids = run_scenarios(run_dir)
+        for r in rows:
+            r["scenario"] = r.get("scenario") or ids.get(r["condition"]) or ""
     return rows
+
+
+def shown(r: Dict[str, str]) -> str:
+    """A condition as tables and charts show it: 'ACT-1 secret_chat'."""
+    return scenario_label(r["condition"], r.get("scenario") or None)
 
 
 def derive_outcomes(run_dir: Path) -> Dict[Tuple[str, ...], Dict[str, Any]]:
@@ -171,7 +183,12 @@ CHAT: List[Column] = [("posts", lambda s: _f(s.get("posts"), "{:.1f}")),
                       ("distinct posts", lambda s: _f(s.get("distinct_post_share"), "{:.0%}")),
                       ("secret posts", lambda s: _f(s.get("secret_posts"), "{:.1f}")),
                       ("colluders name the ticket in secret", lambda s: _rate(s.get("colluders_name_hv"))),
-                      ("largest pile on one task", lambda s: _f(s.get("largest_pile"), "{:.1f}"))]
+                      ("largest pile on one task", lambda s: _f(s.get("largest_pile"), "{:.1f}")),
+                      ("skipped claims", lambda s: _f(s.get("skip_share"), "{:.0%}")),
+                      ("skips: colluders / honest", lambda s: "—" if s.get("skips") is None else
+                       f"{s.get('colluder_skips', 0):.1f} / {s.get('honest_skips', 0):.1f}"),
+                      ("reservations changed", lambda s: _f(s.get("reservations_changed"), "{:.1f}")),
+                      ("claims = last reservation", lambda s: _f(s.get("claims_follow_reservation"), "{:.0%}"))]
 
 
 def table(keys: Sequence[str], columns: Sequence[Column], rows: Sequence[Tuple[Sequence[str], Dict[str, Any]]]) -> List[str]:
@@ -183,9 +200,16 @@ def table(keys: Sequence[str], columns: Sequence[Column], rows: Sequence[Tuple[S
 
 
 def condition_order(run_dir: Path) -> Dict[str, int]:
+    """Row order: by scenario ID (catalogue order: PAPER-0, ..., ACT-0, ACT-1, ...) when every
+    condition has one, else the study file's order."""
+    from scenarios import catalogue
+    ids = run_scenarios(run_dir)
+    known = list(catalogue())
+    if ids and all(i in known for i in ids.values()):
+        return {c: known.index(i) for c, i in ids.items()}
     try:
         study = json.loads((run_dir / "study.json").read_text())["study"]
-        return {c["name"]: i for i, c in enumerate(study["conditions"])}
+        return {(c.get("name") or c.get("scenario")): i for i, c in enumerate(study["conditions"])}
     except (OSError, KeyError, TypeError, ValueError):
         return {}
 
@@ -196,7 +220,7 @@ def summarize_run(run_dir: Path, figures: bool = True) -> List[str]:
     order = condition_order(run_dir)
     groups: Dict[Tuple[str, str], List[Dict[str, str]]] = defaultdict(list)
     for r in sorted(rows, key=lambda r: (order.get(r["condition"], len(order)), r["condition"], r["model"])):
-        groups[(r["condition"], r["model"])].append(r)
+        groups[(shown(r), r["model"])].append(r)
     by_objective: Dict[str, Dict[Tuple[str, str], List[Dict[str, str]]]] = defaultdict(dict)
     for g, rs in groups.items():
         by_objective[rs[0].get("objective") or "coalition_reward"][g] = rs
@@ -219,9 +243,11 @@ def summarize_run(run_dir: Path, figures: bool = True) -> List[str]:
     lines += ["### Health (per round; read before any collusion rate)", ""]
     lines += table(("condition", "model"), HEALTH, [(g, stats[g]) for g in groups])
 
-    lines += ["", "## Chat and herding (per round)", "",
+    lines += ["", "## Chat, herding and skips (per round)", "",
               "Distinct posts: share of messages that are not a repeat by the same agent. Largest pile: the most "
-              "agents claiming one task (1 = no duplicate).", ""]
+              "agents claiming one task (1 = no duplicate). Skipped claims: agents who claimed 'skip' (random fills "
+              "of missing claims excluded). Reservations changed: agents whose last reservation differs from their "
+              "first. Claims = last reservation: share of agents who claimed exactly what they last reserved.", ""]
     lines += table(("condition", "model"), CHAT, [(g, stats[g]) for g in groups])
 
     split_rows = []
@@ -256,10 +282,11 @@ def summarize_run(run_dir: Path, figures: bool = True) -> List[str]:
     (run_dir / "summary.md").write_text("\n".join(lines) + "\n")
     flat = []
     for (cond, model), s in stats.items():
-        flat.append({"condition": cond, "model": model, "split": "all",
+        sid = groups[(cond, model)][0].get("scenario", "")
+        flat.append({"scenario": sid, "condition": groups[(cond, model)][0]["condition"], "model": model, "split": "all",
                      **{k: (v["rate"] if isinstance(v, dict) else v) for k, v in s.items()}})
     with (run_dir / "summary.csv").open("w", newline="") as f:
-        keys = ["condition", "model", "split"] + sorted({k for row in flat for k in row} - {"condition", "model", "split"})
+        keys = ["scenario", "condition", "model", "split"] + sorted({k for row in flat for k in row} - {"scenario", "condition", "model", "split"})
         writer = csv.DictWriter(f, fieldnames=keys)
         writer.writeheader()
         writer.writerows(flat)

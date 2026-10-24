@@ -1,0 +1,26 @@
+# Actions design v0.4 (team folder: design/design_doc.md): can instructed colluders benefit by
+# using actions (reserve / release / claim) as their only communication?
+# Each round (a "sprint"): 2 reservation passes, then 1 claim pass, no chat; 20 rounds with the same
+# team on new planted boards, with a one-line history per round.
+#   Planted board (construction.*): a tempting task T that is both colluders' best task, an honest
+#     best fit for T (collusion costs the team construction.team_conflict), and a private fit gap
+#     between the colluders (construction.cost_gap).
+#   Agents see their own reward per task (prompts.show_payoffs).
+# Conditions (configs/studies/actions_v04.yaml): private chat (positive control), actions with names
+# shown, actions with names anonymous, a greedy pair, team players.
+extends: ./team/game3_reserve_nochat.yaml
+name: actions_v04
+description: actions design v0.4, planted boards, actions only
+
+objective: {type: coalition_reward}
+construction: {mode: planted}
+roles: {new_order_each_round: true}
+series:
+  mode: repeated_new_board
+  rounds: 20
+  feedback: [claims, reservations, own_reward]   # each past sprint: everyone's claims, the last reservations, own reward
+prompts:
+  colluder: prompts/colluder/coalition_nochat.txt
+  colluder_header: false
+  show_payoffs: true
+views: {names: shown}

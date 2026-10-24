@@ -178,6 +178,126 @@ def test_resume_with_another_server_skips_finished_episodes(tmp_path, capsys):
     assert len(list(run_dir.glob("episodes/g2/b/*/episode.json"))) == 2
 
 
+def test_waits_for_a_starting_server():
+    """A scale-to-zero host answers 503 until the model is loaded: wait, then go; give up after startup_wait_s."""
+    import asyncio
+    from agents.llm import ChatClient, ModelConfig
+    server, _ = fake_llm.start(starting_polls=3)
+    try:
+        cfg = ModelConfig(label="m", base_url=f"http://127.0.0.1:{server.server_port}/v1", model="fake",
+                          api_key_env=None, startup_wait_s=5)
+        waits = []
+
+        async def go(cfg):
+            client = ChatClient(cfg)
+            try:
+                return await client.wait_until_ready(on_wait=waits.append, poll_s=0.05)
+            finally:
+                await client.close()
+        assert asyncio.run(go(cfg)) is None and len(waits) == 3
+        server.shutdown()
+        server, _ = fake_llm.start(starting_polls=10**6)                  # never ready
+        cfg = ModelConfig(label="m", base_url=f"http://127.0.0.1:{server.server_port}/v1", model="fake",
+                          api_key_env=None, startup_wait_s=0.2)
+        assert "503" in asyncio.run(go(cfg))
+    finally:
+        server.shutdown()
+
+
+def test_use_model_replaces_the_study_models(tmp_path, capsys):
+    """--use-model: a GPT study played by another model, in a folder named after it."""
+    assert run.main(["configs/studies/action_channel.yaml", "--use-model", "configs/models/scripted.yaml",
+                     "--seeds", "1", "--only", "baseline", "--out", str(tmp_path), "-q", "--no-summary"]) == 0
+    folder = next(tmp_path.iterdir())
+    assert folder.name.endswith("__action_channel__scripted")
+    assert [p.parent.name for p in folder.glob("episodes/baseline/*/seed1_rep0")] == ["scripted"]
+    assert "gpt-4.1-mini" not in (folder / "index.csv").read_text()
+
+
+def test_time_left_counts_turns_not_episodes(monkeypatch):
+    """Three short games finish first, one long game is left (the three-games run of 23 Oct): the
+    estimate must follow the long game's remaining turns, not the average episode."""
+    from env.game_config import load_game
+    clock = [1000.0]
+    monkeypatch.setattr(run.time, "time", lambda: clock[0])
+    short = load_game("configs/games/team/game3_reserve_nochat.yaml", {"series.rounds": 5})   # 90 turns
+    long = load_game("configs/games/team/game1_chat.yaml", {"series.rounds": 5})              # 150 turns
+    jobs = [run.Job(f"s{i}", short, run.ModelConfig(label="m"), 1, 0) for i in range(3)] + \
+           [run.Job("long", long, run.ModelConfig(label="m"), 1, 0)]
+    p = run.Progress(jobs)
+    for _ in range(90):                                   # all four play side by side, 1 s per turn
+        clock[0] += 1
+        for j in jobs:
+            p.turn(j, 1.0)
+    for j in jobs[:3]:
+        p.finish(j)
+    # 60 turns left in the long game, one at a time at 1 s each: about 60 s, not ~0
+    assert 55 <= p.eta() <= 65
+    p.finish(jobs[3])
+    assert p.eta() == 0.0
+
+
+def test_run_listing(tmp_path, capsys):
+    """analysis.runs: one line per run with its model, conditions, progress and state."""
+    from analysis import runs
+    assert run.main(["configs/studies/action_channel.yaml", "--use-model", "configs/models/scripted.yaml",
+                     "--seeds", "1-2", "--only", "baseline,noisy", "--out", str(tmp_path), "-q", "--no-summary"]) == 0
+    capsys.readouterr()
+    assert runs.main(["--runs-dir", str(tmp_path), "--md", str(tmp_path / "runs.md")]) == 0
+    out = capsys.readouterr().out
+    line = next(l for l in out.splitlines() if "__action_channel__scripted" in l)
+    assert "scripted (scripted)" in line and "2: ACT-0 ACT-4" in line and "4/4" in line and "finished" in line
+    assert "| action_channel |" in (tmp_path / "runs.md").read_text()
+    assert runs.main(["--runs-dir", str(tmp_path), "-v", "--grep", "nothing-matches"]) == 0
+    assert "0 runs" in capsys.readouterr().out
+    assert runs.main(["--runs-dir", str(tmp_path), "--scenario", "ACT-4"]) == 0
+    out = capsys.readouterr().out
+    assert "ACT-4 act_noisy" in out and "1 runs" in out and "noisy" in out and "same issue" in out
+    assert runs.where("http://127.0.0.1:8080/v1") == "local" and runs.where("https://api.openai.com/v1") == "openai"
+    assert runs.where("https://someone--collusion-vllm-server.us-east.modal.direct/v1") == "modal"
+
+
+def test_episode_story(tmp_path, capsys):
+    """analysis.episode: lists a run's games, then prints one as a readable story."""
+    from analysis import episode
+    assert run.main(["configs/studies/smoke_scripted.yaml", "--only", "team_game2", "--seeds", "1",
+                     "--out", str(tmp_path), "-q", "--no-summary"]) == 0
+    run_dir = next(tmp_path.iterdir())
+    capsys.readouterr()
+    assert episode.main([str(run_dir)]) == 0
+    assert "SC=HV-2" in capsys.readouterr().out
+    assert episode.main([str(run_dir), "--scenario", "HV-2", "--seed", "1", "--round", "2"]) == 0
+    out = capsys.readouterr().out
+    assert "HV-2 team_game2" in out and "round 2 of 2" in out and "round 1 of 2" not in out
+    assert "high-value ticket" in out and "-- reservation pass 1" in out and "-- claims" in out and "team loss" in out
+    assert episode.main([str(run_dir), "--cond", "nope", "--seed", "1"]) == 1
+
+
+def test_modal_url_comes_from_each_person_s_env(monkeypatch):
+    """configs/models/modal-vllm.yaml is shared; each person's server URL comes from their .env."""
+    from agents import load_model
+    from agents.llm import ChatClient
+    monkeypatch.delenv("MODAL_VLLM_BASE_URL", raising=False)
+    cfg = load_model("configs/models/modal-vllm.yaml")
+    assert "YOUR-WORKSPACE" in cfg.base_url
+    with pytest.raises(RuntimeError, match="make modal-setup"):
+        ChatClient(cfg)
+    monkeypatch.setenv("MODAL_VLLM_BASE_URL", "https://me--collusion-vllm-server.us-east.modal.direct/v1/")
+    assert load_model("configs/models/modal-vllm.yaml").base_url == "https://me--collusion-vllm-server.us-east.modal.direct/v1"
+    assert load_model("configs/models/modal-vllm-thinking.yaml").base_url == "https://me--collusion-vllm-server.us-east.modal.direct/v1"
+
+
+def test_missing_url_or_key_is_reported_before_a_run(tmp_path, monkeypatch, capsys):
+    monkeypatch.delenv("MODAL_VLLM_BASE_URL", raising=False)
+    monkeypatch.delenv("MODAL_VLLM_API_KEY", raising=False)
+    monkeypatch.setattr(run, "load_env_file", lambda *a, **k: None)
+    code = run.main(["configs/studies/action_channel.yaml", "--use-model", "configs/models/modal-vllm.yaml",
+                     "--seeds", "1", "--only", "baseline", "--yes", "--out", str(tmp_path)])
+    out = capsys.readouterr()
+    assert code == 2 and "MODAL_VLLM_BASE_URL" in out.out + out.err and "MODAL_VLLM_API_KEY" in out.out + out.err
+    assert not any(tmp_path.iterdir())                                   # nothing was started
+
+
 # --- metrics ignore random fills --------------------------------------------------------------------
 
 

@@ -45,6 +45,22 @@ async def check(path: str) -> int:
     client = ChatClient(cfg)
     ok = True
     try:
+        if cfg.startup_wait_s:
+            print(f"[info] waiting for the server to start (up to {cfg.startup_wait_s / 60:.0f} min; "
+                  "a cold start loads the model)", flush=True)
+            last = [0.0]
+
+            def tick(elapsed: float) -> None:
+                if elapsed - last[0] >= 60:
+                    last[0] = elapsed
+                    print(f"[info]   still starting after {elapsed / 60:.0f} min", flush=True)
+
+            problem = await client.wait_until_ready(on_wait=tick)
+            if problem:
+                print(f"[fail] the server did not start in {cfg.startup_wait_s / 60:.0f} min: {problem}")
+                print("       Check the server's logs (Modal: modal app logs <app>).")
+                return 1
+            print("[ok]   the server is up", flush=True)
         try:
             r = await client.http.get("/models")
             served: List[str] = [m.get("id") for m in (r.json().get("data") or [])] if r.status_code == 200 else []
@@ -56,7 +72,7 @@ async def check(path: str) -> int:
                 print(f"[warn] {cfg.model!r} not in the served models {served}: check `model` (local servers: the --alias)")
         except httpx.HTTPError as exc:
             print(f"[fail] cannot reach {cfg.base_url}: {type(exc).__name__}: {exc}")
-            print("       Is the server running? (local: in another terminal, start llama-server; see README)")
+            print("       Is the server running? (local: in another terminal, start it with make local-server; see docs/how-to/run-locally.md)")
             return 1
         started = time.time()
         try:

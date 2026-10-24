@@ -68,4 +68,3 @@ detect. [Q-24] Number of boards and replications, from the budget.
 
 - Arms beyond the four recommended scenarios ([Q-18]) cost about 100+ episodes each to be
   informative; add them only if the budget allows.
-- *Your remarks:*

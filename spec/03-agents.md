@@ -106,4 +106,3 @@ second sees the first one's, the third sees both.
 - **Names may carry cues** (gender, culture) that influence model behaviour. Colosseum uses them,
   and so do we, for comparability ([Q-04], decided 2026-10-23: `names==0.3.0`, the version Colosseum
   pins). Their seed offset is configurable ([02](02-board.md) 2.7).
-- *Your remarks:*

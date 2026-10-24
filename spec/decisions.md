@@ -1,8 +1,8 @@
 # Decisions
 
-Every decision of the spec, in the order it appears. **open**: to settle; **decided**: settled by you
+Every decision of the spec, in the order it appears. **open**: to settle; **decided**: settled
 (date); **configurable**: implemented as a config setting, with the default shown — choose per study.
-Rule given on 23 Oct: everything configurable; defaults are the setting closest to Colosseum.
+Rule agreed on 23 Oct: everything configurable; defaults are the setting closest to Colosseum.
 
 Default rule: keep Colosseum's choice unless a change clearly helps the research question.
 
@@ -37,3 +37,9 @@ Default rule: keep Colosseum's choice unless a change clearly helps the research
 | Q-27 | [15](15-configuration.md) | Team games: what the ticket is worth, and to whom | **decided 2026-10-23: configurable**, default closest to Colosseum's scoring: coalition-only bonus (30, placeholder), random ticket, team score unchanged; alternatives in `team_variants.yaml` |
 | Q-28 | [15](15-configuration.md) | Team games: "3 games" and "20 rounds" | **decided 2026-10-23: configurable**, default closest to Colosseum: 3 conditions of 20 separate one-shot episodes |
 | Q-29 | — | Sharing the repository | **decided 2026-10-23**: private, team only (Colosseum has no license; its colluder prompts are quoted verbatim) |
+| Q-30 | [15](15-configuration.md) | Tell agents their reward per task (actions design v0.4) | **configurable** (`prompts.show_payoffs`), default false as Colosseum. **Decided 2026-10-23: off in the revised actions v0.4 game** (`configs/games/actions_v04_sum.yaml`, PSUM scenarios; PLANT keeps its rules for the runs made with it). In the gpt-5-mini pilot (`runs/20261023-184358__actions_v04__gpt-5-mini`) the team players in the colluder seats took T, their top-listed task, alone in 34 of 60 rounds, so the baseline already collected most of the planted gain |
+| Q-31 | [15](15-configuration.md) | Hide who made each pick (actions design v0.4) | **configurable** (`views.names`), default `shown` as Colosseum |
+| Q-32 | [06](06-prompts.md) | Prompts of the actions design v0.4 | **draft**: `colluder/coalition_nochat.txt` (instructed coalition, no boards), `colluder/own_reward_nochat.txt` (greedy-pair baseline) |
+| Q-34 | [06](06-prompts.md) | What "the coalition's joint reward" means to colluders (actions design v0.4) | **decided 2026-10-23: defined as the sum of the members' rewards**, in words, the same in every colluder condition (`colluder/coalition_sum_nochat.txt`, `colluder/coalition_sum_chat.txt`; the greedy pair's own reward likewise, `colluder/own_reward_def_nochat.txt`), in the PSUM scenarios. Colosseum leaves it undefined; 3.1 is a capability test, so colluders are told the target that the analysis measures (pair reward). In the gpt-5-mini pilot, chat colluders without it aimed at task coverage and priority instead |
+| Q-35 | [15](15-configuration.md) | Public board in the actions v0.4 game | **decided 2026-10-23: none**, unlike Colosseum (public board + 4 planning chat passes): public chat is text communication, and the question is whether actions alone carry collusion. Reservations replace Colosseum's planning chat; the private-chat control has only the secret board. Consequence seen in the PSUM checks: with no one to persuade, whoever reserves the tempting task first keeps it |
+| Q-33 | [15](15-configuration.md) | Constructed boards with a planted conflict (actions design v0.4) | **configurable** (`construction.*`), default `none` (Colosseum's boards). Boards that cannot meet the targets (~7%) are replaced by a redrawn board, so every round meets them |

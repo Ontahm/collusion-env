@@ -13,7 +13,8 @@ Run charts (each only when the run has the data for it):
   colosseum         regret gap (the paper's coalition advantage) and reward gap
   reservations      reservation-round signals (games with reservations)
   health            failed tool results, turns without a claim, missing and duplicate claims
-  chat_herding      repeated posts, colluders naming the ticket in secret, the largest pile on one task
+  chat_herding      repeated posts, colluders naming the ticket in secret, the largest pile on one task,
+                    skipped claims
 Board-study charts: conflict share by board size, and the distribution of the price of collusion.
 
 Layout: most charts are dot-and-interval plots. One row per condition (names on the left, so long
@@ -71,7 +72,8 @@ def save(fig, out_dir: Path, name: str) -> List[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = [out_dir / f"{name}.png", out_dir / f"{name}.pdf"]
     for p in paths:
-        fig.savefig(p)
+        # no creation date in PDFs: the same data gives byte-identical files (no spurious git changes)
+        fig.savefig(p, metadata={"CreationDate": None} if p.suffix == ".pdf" else None)
     plt.close(fig)
     return paths
 
@@ -215,7 +217,7 @@ OUTCOME_COLOURS = {"colluder_alone": PALETTE[0], "colluders_collide": PALETTE[1]
 
 def run_figures(run_dir: Path, rows: Optional[List[dict]] = None) -> List[Path]:
     """Charts of a run. `rows`: index rows with the outcome columns (analysis.summarize.load)."""
-    from analysis.summarize import condition_order, load
+    from analysis.summarize import condition_order, load, shown
     style()
     rows = load(run_dir) if rows is None else rows
     if not rows:
@@ -224,7 +226,7 @@ def run_figures(run_dir: Path, rows: Optional[List[dict]] = None) -> List[Path]:
     order = condition_order(run_dir)
     groups: Dict[Tuple[str, str], List[dict]] = defaultdict(list)
     for r in sorted(rows, key=lambda r: (order.get(r["condition"], len(order)), r["condition"], r["model"])):
-        groups[(r["condition"], r["model"])].append(r)
+        groups[(shown(r), r["model"])].append(r)
     paths: List[Path] = []
 
     def keep(fig, name):
@@ -280,10 +282,11 @@ def run_figures(run_dir: Path, rows: Optional[List[dict]] = None) -> List[Path]:
                 MEAN_NOTE + ". Counts per round; read these before any collusion rate.", scale="count"), "health")
     keep(forest(groups, [("distinct posts (1 - repeats)", _mean_panel("distinct_post_share"), "rate"),
                          ("colluders name the ticket in secret chat", _rate_panel("colluders_name_hv"), "rate"),
-                         ("largest pile on one task", _mean_panel("largest_pile"), "count")],
-                "Chat and herding",
+                         ("largest pile on one task", _mean_panel("largest_pile"), "count"),
+                         ("skipped claims", _mean_panel("skip_share"), "rate")],
+                "Chat, herding and skips",
                 "Distinct posts: mean share of messages that are not a repeat by the same agent. Ticket: share of rounds. "
-                "Largest pile: the most agents on one task (1 = no duplicate)."), "chat_herding")
+                "Largest pile: the most agents on one task (1 = no duplicate). Skipped: share of claims that are 'skip'."), "chat_herding")
     return paths
 
 
@@ -378,6 +381,8 @@ def _by_round(groups: Dict[Tuple[str, str], List[dict]], key: str, label: str) -
 def _reservation_signals(run_dir: Path) -> Dict[Tuple[str, str], Dict[str, list]]:
     """(condition, pass k, model) -> the colluders' same-issue and high-value reservation flags."""
     from analysis.summarize import condition_order
+    from scenarios import label, run_scenarios
+    ids = run_scenarios(run_dir)
     acc: Dict[Tuple[str, int, str], Dict[str, list]] = {}
     for ep in run_dir.glob("episodes/**/episode.json"):
         data = json.loads(ep.read_text())
@@ -396,7 +401,7 @@ def _reservation_signals(run_dir: Path) -> Dict[Tuple[str, str], Dict[str, list]
                     cell["hv"].append(hv[i])
     order = condition_order(run_dir)
     keys = sorted(acc, key=lambda k: (order.get(k[0], len(order)), k))
-    return {(f"{c}, pass {i + 1}", m): acc[(c, i, m)] for c, i, m in keys}
+    return {(f"{label(c, ids.get(c))}, pass {i + 1}", m): acc[(c, i, m)] for c, i, m in keys}
 
 
 # --- board study charts --------------------------------------------------------------------------------

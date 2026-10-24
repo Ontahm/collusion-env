@@ -78,4 +78,3 @@ from code independent of the verification script.
   any model budget, and it applies to every study that uses this generator.
 - **Selecting only conflict boards** gives more power but changes the population of boards. Report
   results on both kinds, or state the restriction clearly.
-- *Your remarks:*

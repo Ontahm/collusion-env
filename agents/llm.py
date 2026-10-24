@@ -40,6 +40,8 @@ class ModelConfig:
     label: str = "gpt-4.1-mini"
     provider: str = "openai_compatible"        # openai_compatible | scripted
     base_url: str = "https://api.openai.com/v1"
+    base_url_env: Optional[str] = None         # environment variable (e.g. in .env) that overrides base_url: one
+                                               # model file for everyone, each person's own server URL
     model: str = "gpt-4.1-mini-2025-04-14"
     api_key_env: Optional[str] = "OPENAI_API_KEY"   # name of the environment variable holding the key
     temperature: Optional[float] = 0.7         # Colosseum's paper config
@@ -49,6 +51,7 @@ class ModelConfig:
     extra_body: Mapping[str, Any] = field(default_factory=dict)   # merged into every request
     timeout_s: float = 300.0
     max_retries: int = 6
+    startup_wait_s: float = 0.0                # wait this long for a server that is starting (scale-to-zero hosts)
     price_input_per_1m: Optional[float] = None     # USD per million tokens, for cost estimates
     price_output_per_1m: Optional[float] = None
     policy: str = "greedy"                     # scripted agents only (agents/scripted.py)
@@ -60,6 +63,9 @@ class ChatClient:
     def __init__(self, config: ModelConfig, on_retry: Optional[Callable[[int, str, float], None]] = None):
         self.config = config
         self.on_retry = on_retry or (lambda attempt, error, delay: None)
+        if config.base_url_env and not os.environ.get(config.base_url_env):
+            raise RuntimeError(f"model {config.label!r}: environment variable {config.base_url_env} is not set: put your "
+                               "server's URL in .env (for Modal: make modal-setup does it)")
         key = os.environ.get(config.api_key_env) if config.api_key_env else None
         if config.api_key_env and not key:
             raise RuntimeError(f"model {config.label!r}: environment variable {config.api_key_env} is not set "
@@ -72,6 +78,28 @@ class ChatClient:
 
     async def close(self) -> None:
         await self.http.aclose()
+
+    async def wait_until_ready(self, on_wait: Optional[Callable[[float], None]] = None,
+                               poll_s: float = 10.0) -> Optional[str]:
+        """Poll GET /models while the server is starting (502/503/504 or no connection), for up to
+        `startup_wait_s`. A host that scales to zero (Modal) refuses requests until the model is
+        loaded, which takes minutes after an idle period. Returns None once the server answers with
+        anything else (even an error: it is up), or the last problem when the wait runs out."""
+        deadline = time.time() + self.config.startup_wait_s
+        started = time.time()
+        while True:
+            try:
+                r = await self.http.get("/models", timeout=30)
+                if r.status_code not in (502, 503, 504):
+                    return None
+                problem = f"HTTP {r.status_code}: {r.text[:200]}"
+            except (httpx.TimeoutException, httpx.TransportError) as exc:
+                problem = f"{type(exc).__name__}: {exc}"
+            if time.time() + poll_s > deadline:
+                return problem
+            if on_wait:
+                on_wait(time.time() - started)
+            await asyncio.sleep(poll_s)
 
     async def complete(self, messages: List[Dict[str, Any]], tools: List[Dict[str, Any]],
                        seed: Optional[int] = None) -> Dict[str, Any]:

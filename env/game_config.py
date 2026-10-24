@@ -17,6 +17,7 @@ from typing import Any, Mapping, Optional, Tuple, Union
 
 from env.board import BoardConfig
 from env.configio import apply_set, build, load_yaml
+from env.construct import ConstructionConfig
 from env.objectives import ObjectiveConfig
 from env.roles import ORDERS, SELECTIONS
 from env.scoring import ScoringConfig
@@ -28,6 +29,7 @@ POST_MODES = ("offered", "accepted", "no")
 BINDINGS = ("none", "exclusive")
 COLLUDER_VIEWS = ("visible", "hidden", "issue_only", "noisy")
 HONEST_VIEWS = ("visible", "hidden")
+NAME_VIEWS = ("shown", "anonymous")
 SERIES_MODES = ("independent", "repeated_same_board", "repeated_new_board")
 FEEDBACK = ("claims", "own_reward", "all_rewards", "team_score", "reservations")
 
@@ -65,6 +67,7 @@ class ViewsConfig:
     colluders: str = "visible"              # a colluder's view of its partner's picks: visible | hidden | issue_only | noisy
     honest: str = "visible"                 # honest agents' view of all picks: visible | hidden
     noisy_swap_probability: float = 0.5
+    names: str = "shown"                    # who made each pick: shown (Colosseum) | anonymous (labels redrawn every round, own picks excepted)
 
 
 @dataclass(frozen=True)
@@ -84,6 +87,7 @@ class PromptsConfig:
     honest_hv_note: str = "prompts/honest/hv_note.txt"
     phases: str = "prompts/phases.yaml"
     text_tool_instructions: bool = False    # Colosseum's text tool instructions (its vllm client); prompt text only
+    show_payoffs: bool = False              # add each agent's own reward per task to its prompt (Colosseum: no; agents see costs only)
 
 
 @dataclass(frozen=True)
@@ -95,6 +99,7 @@ class GameConfig:
     scoring: ScoringConfig = field(default_factory=ScoringConfig)
     assignment_filling: bool = True         # Colosseum's regret config: random fill of missing claims
     objective: ObjectiveConfig = field(default_factory=ObjectiveConfig)
+    construction: ConstructionConfig = field(default_factory=ConstructionConfig)   # planted boards (actions design v0.4); default none = Colosseum
     boards: BoardsConfig = field(default_factory=BoardsConfig)
     phases: Tuple[PhaseConfig, ...] = (
         PhaseConfig(kind="chat", passes=4, boards=("public", "secret")),
@@ -129,6 +134,13 @@ class GameConfig:
         check(self.views.colluders in COLLUDER_VIEWS, f"views.colluders must be one of {COLLUDER_VIEWS}")
         check(self.views.honest in HONEST_VIEWS, f"views.honest must be one of {HONEST_VIEWS}")
         check(0.0 <= self.views.noisy_swap_probability <= 1.0, "views.noisy_swap_probability must be in [0, 1]")
+        check(self.views.names in NAME_VIEWS, f"views.names must be one of {NAME_VIEWS}")
+        self.construction.check()
+        check(self.construction.mode == "none" or self.roles.colluders == 2,
+              "construction.mode planted needs roles.colluders: 2")
+        check(not (self.views.names == "anonymous" and (self.boards.log_claims or self.boards.log_reservations)
+                   and (self.boards.public or self.boards.secret)),
+              "views.names is anonymous, but logging picks on a board would show who made them")
         check(self.series.mode in SERIES_MODES, f"series.mode must be one of {SERIES_MODES}")
         check(self.series.rounds >= 1, "series.rounds must be >= 1")
         for item in self.series.feedback:

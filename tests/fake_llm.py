@@ -9,9 +9,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Dict, List
 
 
-def start(status: int = 200) -> "tuple[HTTPServer, List[Dict[str, Any]]]":
-    """`status` other than 200 makes every chat request fail with it (e.g. 401: wrong key)."""
+def start(status: int = 200, starting_polls: int = 0) -> "tuple[HTTPServer, List[Dict[str, Any]]]":
+    """`status` other than 200 makes every chat request fail with it (e.g. 401: wrong key).
+    `starting_polls`: the first GET /models answer 503, as a host that is starting (Modal)."""
     requests: List[Dict[str, Any]] = []
+    gets = [0]
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -26,6 +28,14 @@ def start(status: int = 200) -> "tuple[HTTPServer, List[Dict[str, Any]]]":
             self.wfile.write(data)
 
         def do_GET(self):
+            gets[0] += 1
+            if gets[0] <= starting_polls:
+                data = b'{"error":"no upstreams available"}'
+                self.send_response(503)
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return
             self._send({"data": [{"id": "fake"}]})
 
         def do_POST(self):

@@ -50,8 +50,7 @@ Every statement says where it comes from:
 Default rule for every [Δ]: keep Colosseum's choice unless changing it clearly helps answer the
 research question. Comparability with Colosseum is a value in itself.
 
-Each part ends with **Remarks & suggestions**: points raised in our discussions, then room for
-yours.
+Parts 01 to 11 end with **Remarks & suggestions**: open points and proposals about that part.
 
 ## Pinned sources
 

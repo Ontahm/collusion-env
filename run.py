@@ -34,7 +34,7 @@ import platform
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from importlib import metadata
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -53,8 +53,11 @@ from metrics import index_row, round_metrics
 
 @dataclass(frozen=True)
 class ConditionConfig:
-    name: str
-    game: str
+    """A condition of a study: a scenario of configs/scenarios.yaml by ID (its rules are fixed; `set`
+    may change only the run size), or, for ad-hoc tests, a game file plus overrides."""
+    scenario: Optional[str] = None
+    name: str = ""                               # default: the scenario's name
+    game: str = ""
     set: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -104,6 +107,18 @@ def load_env_file(path: Path = ROOT / ".env") -> None:
         elif " #" in value:
             value = value.split(" #", 1)[0].rstrip()
         os.environ.setdefault(key.strip(), value)
+
+
+def missing_settings(jobs: List["Job"]) -> List[str]:
+    """Environment variables a model needs (its key, its server URL) that are not set: reported before
+    anything runs, instead of failing in the middle of a run."""
+    out = []
+    for m in {j.model.label: j.model for j in jobs if j.model.provider != "scripted"}.values():
+        for var, what in ((m.api_key_env, "key"), (m.base_url_env, "server URL")):
+            if var and not os.environ.get(var):
+                hint = " (Modal: make modal-setup)" if "MODAL" in var else ""
+                out.append(f"model {m.label!r}: its {what} is missing: set {var} in .env{hint}")
+    return out
 
 
 def is_local(model: ModelConfig) -> bool:
@@ -161,6 +176,7 @@ class Job:
     model: ModelConfig
     seed: int
     replication: int
+    scenario: Optional[str] = None             # its ID in configs/scenarios.yaml, if any
 
     @property
     def folder(self) -> str:
@@ -184,7 +200,8 @@ def plan(study: StudyConfig, only=None, models=None, seeds=None, replications=No
         if unknown:
             raise ValueError(f"--models: unknown labels {unknown}; this study has {[m.label for m in model_cfgs]}")
         model_cfgs = [m for m in model_cfgs if m.label in models]
-    names = [c.name for c in study.conditions]
+    resolved = [resolve_condition(c) for c in study.conditions]
+    names = [r[0] for r in resolved]
     if len(set(names)) != len(names):
         raise ValueError(f"study {study.name!r}: two conditions share a name: {names}")
     if only:
@@ -192,15 +209,31 @@ def plan(study: StudyConfig, only=None, models=None, seeds=None, replications=No
         if unknown:
             raise ValueError(f"--only: unknown conditions {unknown}; this study has {names}")
     jobs = []
-    for cond in study.conditions:
-        if only and cond.name not in only:
+    for name, game, sid in resolved:
+        if only and name not in only:
             continue
-        game = load_game(cond.game, cond.set)
         for model in model_cfgs:
             for seed in (seeds or parse_seeds(study.seeds)):
                 for rep in range(replications if replications is not None else study.replications):
-                    jobs.append(Job(cond.name, game, model, seed, rep))
+                    jobs.append(Job(name, game, model, seed, rep, sid))
     return jobs
+
+
+def resolve_condition(cond: ConditionConfig) -> Tuple[str, GameConfig, Optional[str]]:
+    """(name, game, scenario ID). A scenario reference takes its rules from the catalogue; a game
+    file is recognised as a scenario when its rules match one."""
+    import scenarios
+    if cond.scenario:
+        sc = scenarios.get(cond.scenario)
+        if cond.game:
+            raise ValueError(f"condition {cond.scenario}: give a scenario or a game, not both")
+        size = scenarios.split_set(cond.set)
+        game = load_game(sc.game, {**dict(sc.set), **size})
+        return cond.name or sc.name, game, sc.id
+    if not cond.game or not cond.name:
+        raise ValueError("a condition needs `scenario: <ID>` (configs/scenarios.yaml), or `name` and `game`")
+    game = load_game(cond.game, cond.set)
+    return cond.name, game, scenarios.identify(to_plain(game))
 
 
 def board_seed_overlaps(jobs: List[Job]) -> List[str]:
@@ -230,11 +263,40 @@ def turns_per_round(game: GameConfig) -> int:
     return sum(p.passes * count[p.participants] for p in game.phases)
 
 
+class Progress:
+    """Time left, counted in turns: each episode's planned turns, the turns played so far and their
+    measured duration. The estimate is the larger of two limits: the turns left at the throughput
+    measured so far (episodes in parallel), and the longest episode left played one turn at a time
+    (an episode's turns are sequential, so a long episode alone at the end cannot go faster)."""
+
+    def __init__(self, jobs: List[Job]):
+        self.planned = {j.folder: turns_per_round(j.game) * j.game.series.rounds for j in jobs}
+        self.played: Dict[str, int] = {}
+        self.turns, self.turn_seconds, self.started = 0, 0.0, time.time()
+
+    def turn(self, job: Job, seconds: float) -> None:
+        self.played[job.folder] = self.played.get(job.folder, 0) + 1
+        self.turns += 1
+        self.turn_seconds += seconds
+
+    def finish(self, job: Job) -> None:
+        self.played[job.folder] = self.planned[job.folder]
+
+    def eta(self) -> Optional[float]:
+        left = [max(0, p - self.played.get(k, 0)) for k, p in self.planned.items()]
+        if not any(left):
+            return 0.0
+        if not self.turns:
+            return None
+        throughput = self.turns / max(1e-9, time.time() - self.started)
+        return max(sum(left) / throughput, max(left) * self.turn_seconds / self.turns)
+
+
 def describe(jobs: List[Job]) -> str:
     lines = [f"{len(jobs)} episodes"]
     by: Dict[Tuple[str, str], List[Job]] = {}
     for j in jobs:
-        by.setdefault((j.condition, j.model.label), []).append(j)
+        by.setdefault((f"{j.scenario} {j.condition}" if j.scenario else j.condition, j.model.label), []).append(j)
     calls_total = 0
     for (cond, model), js in by.items():
         g = js[0].game
@@ -257,7 +319,7 @@ def is_complete(job: Job, run_dir: Path) -> bool:
 
 
 async def run_job(job: Job, run_dir: Path, clients: Dict[str, ChatClient], index_lock: asyncio.Lock,
-                  log: RunLogger) -> Tuple[str, int]:
+                  log: RunLogger, progress: Optional[Progress] = None) -> Tuple[str, int]:
     """Play one episode and write its files. Returns (status, rounds played)."""
     folder = run_dir / job.folder
     if is_complete(job, run_dir):
@@ -271,6 +333,8 @@ async def run_job(job: Job, run_dir: Path, clients: Dict[str, ChatClient], index
         turns_f.write(json.dumps(record, default=str) + "\n")
         turns_f.flush()
         log.turn(job.label, record)
+        if progress:
+            progress.turn(job, float(record.get("seconds") or 0.0))
 
     def log_call(record: Dict[str, Any]) -> None:
         calls_f.write(json.dumps(record, default=str) + "\n")
@@ -318,7 +382,7 @@ async def run_job(job: Job, run_dir: Path, clients: Dict[str, ChatClient], index
                 status, error = "failed", error or f"metrics failed: {exc}"
                 continue
         rounds.append({**plain_round(record), "metrics": to_plain(m)})
-        row = index_row(job.condition, job.model.label, job.seed, job.replication, record, m)
+        row = {"scenario": job.scenario or "", **index_row(job.condition, job.model.label, job.seed, job.replication, record, m)}
         row["cost_usd"] = cost(job.model, row["prompt_tokens"], row["completion_tokens"])
         rows.append(row)
     (folder / "episode.json").write_text(json.dumps({"status": status, "error": error, "condition": job.condition,
@@ -387,12 +451,21 @@ async def run_all(jobs: List[Job], run_dir: Path, concurrency: int, log: Optiona
     dead: Dict[str, str] = {}                          # model label -> fatal error: its remaining episodes are skipped
     pending = {j.model.label for j in jobs if not is_complete(j, run_dir)}
     for label, client in clients.items():
+        if label in pending and client.config.startup_wait_s:
+            log.plan(f"waiting for {label!r} to start (up to {client.config.startup_wait_s / 60:.0f} min)")
+            problem = await client.wait_until_ready()
+            if problem:
+                dead[label] = f"server not ready after {client.config.startup_wait_s / 60:.0f} min: {problem}"
+                log.error(f"model {label!r} not run: {dead[label]}")
+                continue
+            log.plan(f"{label!r} is up")
         if label in pending and is_local(client.config):
             problem = await local_model_problem(client)
             if problem:
                 dead[label] = problem
                 log.error(f"model {label!r} not run: {problem}")
     started = time.time()
+    progress = Progress(jobs)
 
     async def one(job: Job) -> None:
         async with sem:
@@ -403,7 +476,7 @@ async def run_all(jobs: List[Job], run_dir: Path, concurrency: int, log: Optiona
             else:
                 t0 = time.time()
                 try:
-                    status, n_rounds = await run_job(job, run_dir, clients, lock, log)
+                    status, n_rounds = await run_job(job, run_dir, clients, lock, log, progress)
                 except FatalModelError as exc:
                     dead[job.model.label] = str(exc)
                     log.error(f"stopping every episode of model {job.model.label!r}: {exc}")
@@ -413,7 +486,9 @@ async def run_all(jobs: List[Job], run_dir: Path, concurrency: int, log: Optiona
                     status, n_rounds = "failed", 0
                 seconds = time.time() - t0
             counts[status] = counts.get(status, 0) + 1
-            log.progress(sum(counts.values()), len(jobs), job.label, status, seconds, started, n_rounds)
+            progress.finish(job)
+            log.progress(sum(counts.values()), len(jobs), job.label, status, seconds, started, n_rounds,
+                         eta=progress.eta())
 
     try:
         await asyncio.gather(*(one(j) for j in jobs))
@@ -431,6 +506,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--scripted", nargs="?", const="colluder", default=None)
     parser.add_argument("--only")
     parser.add_argument("--models")
+    parser.add_argument("--use-model", help="model file(s), comma-separated, replacing the study's models "
+                                            "(e.g. the same study on an open model on Modal)")
     parser.add_argument("--seeds")
     parser.add_argument("--replications", type=int)
     parser.add_argument("--resume")
@@ -454,6 +531,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     log = RunLogger(settings)
     try:
         study = build(StudyConfig, load_yaml(args.study), "study")
+        if args.use_model:
+            study = replace(study, models=tuple(m.strip() for m in args.use_model.split(",") if m.strip()))
         jobs = plan(study, only=args.only.split(",") if args.only else None,
                     models=args.models.split(",") if args.models else None,
                     seeds=parse_seeds(args.seeds) if args.seeds else None,
@@ -467,6 +546,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         log.warning(warning)
     if args.dry_run or not jobs:
         return 0
+    missing = missing_settings(jobs)
+    if missing:
+        for problem in missing:
+            log.error(problem)
+        return 2
     remote = sorted({j.model.label for j in jobs if j.model.provider != "scripted" and not is_local(j.model)})
     if remote and not args.yes:
         if not sys.stdin.isatty():
@@ -479,20 +563,25 @@ def main(argv: Optional[List[str]] = None) -> int:
     else:
         stamp = time.strftime("%Y%m%d-%H%M%S")
         parent = args.out or os.environ.get("COLLUSION_RUNS_DIR") or study.out_dir
-        run_dir = resolve_path(parent) / f"{stamp}__{study.name}{'__scripted' if args.scripted else ''}"
+        suffix = "__scripted" if args.scripted else ""
+        if args.use_model and not args.scripted:              # the folder says which model replaced the study's
+            suffix = "__" + "+".join(sorted({j.model.label for j in jobs}))
+        run_dir = resolve_path(parent) / f"{stamp}__{study.name}{suffix}"
     run_dir.mkdir(parents=True, exist_ok=True)
     log.open_file(run_dir / "run.log", preamble=plan_text)
     log.plan(f"run folder: {run_dir}")
     if not (run_dir / "study.json").exists():
         (run_dir / "study.json").write_text(json.dumps({"source": str(args.study), "study": to_plain(study),
-                                                        "args": vars(args)}, indent=1))
+                                                        "args": vars(args),
+                                                        "scenarios": {j.condition: j.scenario for j in jobs}}, indent=1))
         local = any(j.model.provider != "scripted" and is_local(j.model) for j in jobs)
         (run_dir / "provenance.json").write_text(json.dumps(provenance(local), indent=1))
+    again = f"python -m run {args.study}" + (f" --use-model {args.use_model}" if args.use_model else "") + f" --resume {run_dir}"
     try:
         counts = asyncio.run(run_all(jobs, run_dir, args.concurrency or study.max_concurrency, log))
     except KeyboardInterrupt:
         rebuild_index(run_dir)
-        log.error(f"interrupted. Finished episodes are kept; continue with: python -m run {args.study} --resume {run_dir}")
+        log.error(f"interrupted. Finished episodes are kept; continue with: {again}")
         log.close()
         return 130
     n_rows = rebuild_index(run_dir)
@@ -507,8 +596,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             log.summary(f"summary and charts: {run_dir / 'summary.md'}, {run_dir / 'figures'}")
         except Exception as exc:
             log.error(f"summary failed ({type(exc).__name__}: {exc}); run: python -m analysis.summarize {run_dir}")
+    not_run, failed = counts.get("not run (model unusable)", 0), counts.get("failed", 0)
+    if not_run or failed:
+        log.error(f"{not_run} episodes not run, {failed} failed (exit code 3). Finished episodes are kept: fix the cause "
+                  f"(e.g. start the model's server), then continue with: {again}")
     log.close()
-    return 0 if not (counts.get("failed") or counts.get("not run (model unusable)")) else 3
+    return 0 if not (failed or not_run) else 3
 
 
 if __name__ == "__main__":
