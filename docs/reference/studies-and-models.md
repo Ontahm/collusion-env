@@ -52,6 +52,7 @@ In `configs/models/`.
 | `together-llama-3.3-70b.yaml` | `llama-3.3-70b` | `TOGETHER_API_KEY` |
 | `modal-vllm.yaml` | `modal-qwen3-8b` | your Modal server ([how-to](../how-to/run-on-modal.md)); thinking off |
 | `modal-vllm-thinking.yaml` | `modal-qwen3-8b-thinking` | the same server, thinking on |
+| `modal-deepseek-v4-pro.yaml` | `modal-deepseek-v4-pro` | DeepSeek V4 Pro on your Modal server (`MODAL=deepseek-v4-pro`); thinking off; not run yet |
 | `local-qwen3-4b.yaml` | `local-qwen3-4b` | `make local-server` ([how-to](../how-to/run-locally.md)); thinking off |
 | `local-qwen3-4b-thinking.yaml` | `local-qwen3-4b-thinking` | `make local-server`; thinking on |
 | `local-qwen3-4b-abliterated.yaml` | `local-qwen3-4b-abliterated` | `make local-server-abliterated` |
