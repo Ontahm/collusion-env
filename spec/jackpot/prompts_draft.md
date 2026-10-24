@@ -1,3 +1,5 @@
+> **Superseded** by `prompts/jackpot/*.txt` (the texts the engine uses; see `prompts/jackpot/README.md`). Kept as the record of the draft.
+
 # Jackpot game: agent instructions (draft for review)
 
 Draft by Yuri, for Brint to wire into `prompts/`. Follows design §3.3 and the two rules in `contract.md`:
