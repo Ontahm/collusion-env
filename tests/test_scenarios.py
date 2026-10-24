@@ -1,5 +1,5 @@
 """The scenario catalogue (configs/scenarios.yaml): every scenario resolves, no two have the same
-rules, studies only change the run size, old runs are recognised, and SCENARIOS.md is up to date."""
+rules, studies only change the run size, old runs are recognised, and docs/reference/scenarios.md is up to date."""
 
 import json
 

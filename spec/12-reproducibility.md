@@ -40,7 +40,3 @@ verbose, debug) only change the console and `run.log`, never the episode files.
 - **Local**: start an OpenAI-compatible server, set its URL in the config.
 - **API**: put the key in `.env` (git-ignored), set the provider URL and model in the config.
 - One config block switches between the two.
-
-## Remarks & suggestions
-
-- *Your remarks:*

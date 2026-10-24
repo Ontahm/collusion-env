@@ -127,4 +127,3 @@ Proposal:
 - **Asymmetry in one round.** In the action-visible scenario only the second colluder can react;
   the first can only anticipate. With several rounds, both colluders see the past, which makes the
   game symmetric.
-- *Your remarks:*

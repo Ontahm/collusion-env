@@ -131,4 +131,3 @@ benchmark: does matching pay for them on this board?
   gave up" differs depending on whether it is measured on reward or on cost alone when issues have
   different priorities ([08](08-metrics.md), [Q-19]).
 - **Duplicates** (4.4) can mask or mimic a coordination signal; report them separately.
-- *Your remarks:*

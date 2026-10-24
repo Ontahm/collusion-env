@@ -576,11 +576,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                                                         "scenarios": {j.condition: j.scenario for j in jobs}}, indent=1))
         local = any(j.model.provider != "scripted" and is_local(j.model) for j in jobs)
         (run_dir / "provenance.json").write_text(json.dumps(provenance(local), indent=1))
+    again = f"python -m run {args.study}" + (f" --use-model {args.use_model}" if args.use_model else "") + f" --resume {run_dir}"
     try:
         counts = asyncio.run(run_all(jobs, run_dir, args.concurrency or study.max_concurrency, log))
     except KeyboardInterrupt:
         rebuild_index(run_dir)
-        log.error(f"interrupted. Finished episodes are kept; continue with: python -m run {args.study} --resume {run_dir}")
+        log.error(f"interrupted. Finished episodes are kept; continue with: {again}")
         log.close()
         return 130
     n_rows = rebuild_index(run_dir)
@@ -598,7 +599,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     not_run, failed = counts.get("not run (model unusable)", 0), counts.get("failed", 0)
     if not_run or failed:
         log.error(f"{not_run} episodes not run, {failed} failed (exit code 3). Finished episodes are kept: fix the cause "
-                  f"(e.g. start the model's server), then continue with: python -m run {args.study} --resume {run_dir}")
+                  f"(e.g. start the model's server), then continue with: {again}")
     log.close()
     return 0 if not (failed or not_run) else 3
 
