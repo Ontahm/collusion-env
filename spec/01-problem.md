@@ -97,4 +97,3 @@ boundaries ([13](13-architecture.md)) leave room for them.
   exactly what route 3.1 asks about.
 - **Collusion on paper.** In the private-chat scenario we can compare what the colluders agree on
   with what they then claim ([08](08-metrics.md)).
-- *Your remarks:*

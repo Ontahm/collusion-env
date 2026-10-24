@@ -16,7 +16,7 @@ CTX ?= 12288
 QWEN_URL := https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf
 ABLIT_URL := https://huggingface.co/Mungert/Qwen3-4B-abliterated-GGUF/resolve/56175aed285a884480f49bb18d2a1b0e05a7749f/Qwen3-4B-abliterated-q4_k_m.gguf
 ARGS ?=
-# Modal (scripts/modal_tool.py, deploy/README.md): which model file to deploy and run, episodes in parallel.
+# Modal (docs/how-to/run-on-modal.md): which model file to deploy and run, episodes in parallel.
 MODAL_MODEL ?= configs/models/modal-vllm.yaml
 CONC ?= 16
 LOG ?=
@@ -38,7 +38,7 @@ install: check-env ## First step, any OS: check uv, install the locked dependenc
 	@git config core.hooksPath .githooks && echo "git hook installed: commits are checked for secrets"
 	@[ -f .env ] || { cp .env.example .env && echo "created .env from .env.example: fill in the keys you use"; }
 	@chmod 600 .env
-	@echo "ready. Next: make test (no model, no network), then the README's quick start"
+	@echo "ready. Next: make test (no model, no network), then make smoke (free); guide: docs/getting-started.md"
 
 setup: install ## Same as make install
 
@@ -69,7 +69,7 @@ local-server: ## Serve a local model on http://127.0.0.1:8080 (Ctrl+C stops). MO
 	@export MODEL_FILE="$(MODEL_FILE)" ALIAS="$(ALIAS)" PORT="$(PORT)" CTX="$(CTX)"; \
 	if command -v llama-server >/dev/null; then exec scripts/serve.sh; \
 	elif command -v nix >/dev/null; then exec nix develop .#server --command scripts/serve.sh; \
-	else echo "llama-server not found: install llama.cpp (README, section 5)"; exit 1; fi
+	else echo "llama-server not found: install llama.cpp (docs/how-to/run-locally.md)"; exit 1; fi
 
 local-server-abliterated: ## Serve the abliterated Qwen3-4B (name qwen3-4b-ablit-q4km)
 	@$(MAKE) --no-print-directory local-server MODEL_FILE=models/Qwen3-4B-abliterated-q4_k_m.gguf ALIAS=qwen3-4b-ablit-q4km
@@ -92,7 +92,7 @@ runs: check-env ## List the runs (SC=<scenario>: every run of one scenario, with
 episode: check-env ## Read one game as a story: make episode RUN=runs/<run> SC=<scenario> SEED=<k> (or COND=; without them: list the games)
 	$(PY) -m analysis.episode $(RUN) $(if $(SC),--scenario $(SC),) $(if $(COND),--cond $(COND),) $(if $(SEED),--seed $(SEED),) $(ARGS)
 
-scenarios: check-env ## The scenario table (configs/scenarios.yaml): print it and regenerate SCENARIOS.md
+scenarios: check-env ## The scenario table (configs/scenarios.yaml): print it and regenerate docs/reference/scenarios.md
 	$(PY) -m scenarios
 
 prompts: check-env ## The exact prompts of a scenario, on a sample board: make prompts SC=HV-2 [SEED=3]
@@ -101,7 +101,7 @@ prompts: check-env ## The exact prompts of a scenario, on a sample board: make p
 board-study: check-env ## Model-free board study (BOARD_STUDY=configs/board_study.yaml)
 	$(PY) -m analysis.board_study $(BOARD_STUDY) $(ARGS)
 
-# Modal (deploy/README.md). Both targets stop the server at the end, also on error or Ctrl+C.
+# Modal (docs/how-to/run-on-modal.md). Both targets stop the server at the end, also on error or Ctrl+C.
 modal-setup: check-env ## Modal, once per person (again = new key): install, log in, key, deploy, check, stop
 	@export PATH="$$HOME/.local/bin:$$PATH"; set -e; \
 	command -v modal >/dev/null || { echo "[modal] installing the modal command"; uv tool install modal; }; \

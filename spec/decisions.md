@@ -1,8 +1,8 @@
 # Decisions
 
-Every decision of the spec, in the order it appears. **open**: to settle; **decided**: settled by you
+Every decision of the spec, in the order it appears. **open**: to settle; **decided**: settled
 (date); **configurable**: implemented as a config setting, with the default shown — choose per study.
-Rule given on 23 Oct: everything configurable; defaults are the setting closest to Colosseum.
+Rule agreed on 23 Oct: everything configurable; defaults are the setting closest to Colosseum.
 
 Default rule: keep Colosseum's choice unless a change clearly helps the research question.
 

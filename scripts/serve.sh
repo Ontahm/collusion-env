@@ -15,7 +15,7 @@ NGL="${NGL:-99}"
 SEED="${SEED:-42}"
 
 [[ -f "$MODEL_FILE" ]] || { echo "Missing $MODEL_FILE: run 'make models' first." >&2; exit 1; }
-command -v llama-server >/dev/null || { echo "llama-server not found (see README, section 5)." >&2; exit 1; }
+command -v llama-server >/dev/null || { echo "llama-server not found (see docs/how-to/run-locally.md)." >&2; exit 1; }
 if [[ "$HOST" != "127.0.0.1" && "$HOST" != "localhost" ]]; then
   echo "Refusing HOST=$HOST: the server has no authentication, keep it on 127.0.0.1." >&2
   exit 1

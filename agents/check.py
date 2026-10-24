@@ -72,7 +72,7 @@ async def check(path: str) -> int:
                 print(f"[warn] {cfg.model!r} not in the served models {served}: check `model` (local servers: the --alias)")
         except httpx.HTTPError as exc:
             print(f"[fail] cannot reach {cfg.base_url}: {type(exc).__name__}: {exc}")
-            print("       Is the server running? (local: in another terminal, start llama-server; see README)")
+            print("       Is the server running? (local: in another terminal, start it with make local-server; see docs/how-to/run-locally.md)")
             return 1
         started = time.time()
         try:

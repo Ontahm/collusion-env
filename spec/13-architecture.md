@@ -37,10 +37,6 @@ and is reviewed before the next one starts.
 [Q-25], decided 2026-10-23. The allowed set: `numpy` and `scipy` (exact optimum), `names==0.3.0`
 (agent names, [Q-04]), an HTTP client for the OpenAI-compatible API (`openai` or `httpx`), `pyyaml`
 (configs), `pytest` (tests). Each is added only when the module that needs it is built. Anything
-else needs agreement first. Used: `httpx` (chosen over `openai`: fewer dependencies, and requests
+else needs the team's agreement first. Used: `httpx` (chosen over `openai`: fewer dependencies, and requests
 and responses are logged exactly as sent), `names`, `numpy`, `scipy`, `pyyaml`, `pytest`, and their
-own dependencies (`uv.lock`). Added 2026-10-23 with your agreement: `matplotlib` (report charts).
-
-## Remarks & suggestions
-
-- *Your remarks:*
+own dependencies (`uv.lock`). Added 2026-10-23: `matplotlib` (report charts).

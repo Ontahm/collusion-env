@@ -5,8 +5,8 @@ refer to scenarios by ID; old runs and ad-hoc conditions are recognised from the
 (the full game config after files and overrides, without its name, description and number of
 rounds), so the same rules always get the same ID wherever they were played.
 
-    python -m scenarios                  # the table (also: make scenarios), and writes SCENARIOS.md
-    python -m scenarios --check          # exit 1 if SCENARIOS.md is out of date
+    python -m scenarios                  # the table (also: make scenarios), and writes docs/reference/scenarios.md
+    python -m scenarios --check          # exit 1 if docs/reference/scenarios.md is out of date
     python -m scenarios --prompts HV-2   # the exact prompts of a scenario (also: make prompts SC=HV-2)
 """
 
@@ -25,7 +25,7 @@ from env.configio import ROOT, load_yaml, to_plain
 from env.game_config import load_game
 
 CATALOGUE = ROOT / "configs" / "scenarios.yaml"
-TABLE = ROOT / "SCENARIOS.md"
+TABLE = ROOT / "docs" / "reference" / "scenarios.md"
 SIZE_KEYS = {"series.rounds"}            # what a study may change without changing the scenario
 FAMILIES = {
     "PAPER": "Colosseum's Jira conditions (paper reproduction). Goal: maximise the coalition's joint reward.",
@@ -272,7 +272,7 @@ def studies_using() -> Dict[str, list]:
 
 def markdown() -> str:
     lines = ["# Scenarios", "",
-             "Generated from [configs/scenarios.yaml](configs/scenarios.yaml) by `make scenarios`; do not edit by hand.",
+             "Generated from [configs/scenarios.yaml](../../configs/scenarios.yaml) by `make scenarios`; do not edit by hand.",
              "",
              "A **scenario** is a set of game rules with a short ID. The same ID means the same rules in every "
              "study, model and run. Studies list scenarios by ID and may change only their number of rounds.", "",
@@ -309,7 +309,7 @@ def markdown() -> str:
 
 def main(argv: Optional[list] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--check", action="store_true", help="fail if SCENARIOS.md is out of date")
+    parser.add_argument("--check", action="store_true", help="fail if docs/reference/scenarios.md is out of date")
     parser.add_argument("--prompts", metavar="ID", help="print the exact prompts of a scenario")
     parser.add_argument("--seed", type=int, default=1, help="board for --prompts")
     args = parser.parse_args(argv)
@@ -325,9 +325,9 @@ def main(argv: Optional[list] = None) -> int:
     if args.check:
         current = TABLE.read_text() if TABLE.exists() else ""
         if current != text:
-            print("SCENARIOS.md is out of date: run make scenarios")
+            print("docs/reference/scenarios.md is out of date: run make scenarios")
             return 1
-        print("SCENARIOS.md is up to date")
+        print("docs/reference/scenarios.md is up to date")
         return 0
     TABLE.write_text(text)
     for s in catalogue().values():

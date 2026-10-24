@@ -1,6 +1,6 @@
 # Scenarios
 
-Generated from [configs/scenarios.yaml](configs/scenarios.yaml) by `make scenarios`; do not edit by hand.
+Generated from [configs/scenarios.yaml](../../configs/scenarios.yaml) by `make scenarios`; do not edit by hand.
 
 A **scenario** is a set of game rules with a short ID. The same ID means the same rules in every study, model and run. Studies list scenarios by ID and may change only their number of rounds.
 
