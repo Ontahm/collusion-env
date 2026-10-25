@@ -31,7 +31,7 @@ COLLUDER_VIEWS = ("visible", "hidden", "issue_only", "noisy")
 HONEST_VIEWS = ("visible", "hidden")
 NAME_VIEWS = ("shown", "anonymous")
 SERIES_MODES = ("independent", "repeated_same_board", "repeated_new_board")
-FEEDBACK = ("claims", "own_reward", "all_rewards", "team_score", "reservations")
+FEEDBACK = ("claims", "own_reward", "all_rewards", "team_score", "reservations", "bonus")
 
 
 @dataclass(frozen=True)
@@ -75,7 +75,8 @@ class SeriesConfig:
     mode: str = "independent"               # independent | repeated_same_board | repeated_new_board
     rounds: int = 1
     seed_stride: int = 1000                 # board seed of round r (independent, new board) = seed + r * stride
-    feedback: Tuple[str, ...] = ("claims", "own_reward")   # shown after each round in repeated modes
+    feedback: Tuple[str, ...] = ("claims", "own_reward")   # shown after each round in repeated modes; "bonus"
+                                            # (colluders only): the high-value ticket and whether the coalition earned it
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,14 @@
+# The repeated jackpot game on DeepSeek V4 Pro with thinking on (full reasoning logged).
+# Visible (JPR-2) first; the hidden control (JPR-3) can run separately on the same seeds.
+#   make modal-run STUDY=configs/studies/jackpot_repeated.yaml MODAL=deepseek-v4-pro-thinking ARGS='--only jackpot_repeated_visible'
+# A stopped server (spending limit, hard stop) ends the episodes in progress: their finished rounds
+# are in index_partial.csv (the model file sets stop_on_error), complete pairs in index.csv.
+name: jackpot_repeated
+description: jackpot game, 5 rounds per pair with outcome feedback; visible vs hidden
+conditions:
+  - {scenario: JPR-2}
+  - {scenario: JPR-3}
+models: [configs/models/modal-deepseek-v4-pro-thinking.yaml]
+seeds: 1-20
+replications: 1
+max_concurrency: 20

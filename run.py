@@ -359,6 +359,7 @@ async def run_job(job: Job, run_dir: Path, clients: Dict[str, ChatClient], index
     episode = Episode(job.game, job.seed, make_agent, replication=job.replication, log_turn=log_turn, on_round=on_round)
     started = time.time()
     fatal = None
+    cancelled = False
     try:
         records = await episode.play()
         status, error = "complete", None
@@ -366,6 +367,9 @@ async def run_job(job: Job, run_dir: Path, clients: Dict[str, ChatClient], index
         records, status, error, fatal = episode.rounds, "failed", str(exc), exc
     except Exception as exc:                           # keep the partial logs; mark the episode failed
         records, status, error = episode.rounds, "failed", f"{type(exc).__name__}: {exc}"
+    except asyncio.CancelledError:                     # Ctrl+C or a stopped run: still write the finished rounds
+        records, status, error = episode.rounds, "interrupted", "interrupted"
+        cancelled = True
     finally:
         turns_f.close()
         calls_f.close()
@@ -392,6 +396,8 @@ async def run_job(job: Job, run_dir: Path, clients: Dict[str, ChatClient], index
     if status == "complete":                           # index.csv only ever holds complete episodes
         async with index_lock:
             append_rows(run_dir / "index.csv", rows)
+    if cancelled:
+        raise asyncio.CancelledError()
     if fatal is not None:
         raise fatal
     return status, len(rounds)
@@ -423,7 +429,9 @@ def append_rows(path: Path, rows: List[Dict[str, Any]]) -> None:
 
 
 def rebuild_index(run_dir: Path) -> int:
-    rows = []
+    """index.csv from complete episodes; index_partial.csv from the finished rounds of failed or
+    interrupted ones (a repeated series stopped by an outage or a spending limit). Returns len(index)."""
+    rows, partial = [], []
     for ep in sorted(run_dir.glob("episodes/**/episode.json")):
         try:
             data = json.loads(ep.read_text())
@@ -431,10 +439,12 @@ def rebuild_index(run_dir: Path) -> int:
             continue
         if data.get("status") == "complete":
             rows.extend(data.get("index_rows", []))
-    path = run_dir / "index.csv"
-    if path.exists():
-        path.unlink()
-    append_rows(path, rows)
+        else:                                          # failed or interrupted: its finished rounds, kept apart
+            partial.extend(data.get("index_rows", []))
+    for path, these in ((run_dir / "index.csv", rows), (run_dir / "index_partial.csv", partial)):
+        if path.exists():
+            path.unlink()
+        append_rows(path, these)
     return len(rows)
 
 

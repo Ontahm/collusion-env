@@ -35,6 +35,12 @@ class FatalModelError(RuntimeError):
     """The endpoint refuses every request (key, access, model name or URL): stop using this model."""
 
 
+class ModelUnavailable(RuntimeError):
+    """A call still failed after every retry (server stopped, spending limit, outage) and the model's
+    `stop_on_error` is set: the episode stops, keeping its finished rounds, instead of letting the
+    environment fill the missing claim at random."""
+
+
 @dataclass(frozen=True)
 class ModelConfig:
     label: str = "gpt-4.1-mini"
@@ -56,6 +62,8 @@ class ModelConfig:
     price_output_per_1m: Optional[float] = None
     policy: str = "greedy"                     # scripted agents only (agents/scripted.py)
     api: str = "chat"                          # chat (POST /chat/completions) | responses (POST /responses, OpenAI)
+    stop_on_error: bool = False                # a call that fails after all retries stops the episode (finished
+                                               # rounds kept) instead of a random fill of the agent's claim
     reasoning_summary: Optional[str] = None    # responses only: ask for the model's reasoning summary
                                                # (auto | concise | detailed); logged as the message's "reasoning"
 
@@ -257,6 +265,8 @@ class LLMAgent:
             self.log_call({"agent": self.name, **turn.meta, "kind": turn.kind, "step": step, "seed": seed, **out})
             if "error" in out:
                 error = out["error"]
+                if self.client.config.stop_on_error:
+                    raise ModelUnavailable(f"{self.name}: {error}")
                 break
             choice = (out["response"].get("choices") or [{}])[0]
             message = choice.get("message") or {}

@@ -32,7 +32,7 @@ from env.jackpot import template_values_for
 from env.board_analysis import analyze
 from env.configio import to_plain
 from env.game_config import GameConfig, PhaseConfig
-from env.objectives import Objective, resolve
+from env.objectives import Objective, hv_holders, resolve
 from env.prompts import PromptTexts, TurnView, load_texts, system_prompt, template_values, user_prompt
 from env.roles import Roles, draw_roles, reshuffled_order
 from env.scoring import Context, evaluate
@@ -366,6 +366,11 @@ class Episode:
                 parts.append("rewards: " + ", ".join(sorted(f"{who(a)}: {v:.2f}" for a, v in evaluation["rewards"].items())))
             if "team_score" in fb:
                 parts.append(f"team score: {evaluation['score']:.2f}")
+            if "bonus" in fb and s.roles.is_colluder(name) and s.objective.hv_task:
+                bonus = self.game.objective.high_value_ticket.coalition_bonus
+                holders = [a for a in hv_holders(record["assignment"], s.objective.hv_task) if s.roles.is_colluder(a)]
+                parts.append(f"bonus task: {s.objective.hv_task}, " + (f"claimed by {who(holders[0])}: coalition earned +{bonus:g}"
+                                                                      if holders else "not claimed by the coalition: no bonus"))
             self.history.setdefault(name, []).append(" | ".join(parts))
 
 
