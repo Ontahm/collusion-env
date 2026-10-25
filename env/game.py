@@ -28,10 +28,11 @@ from env.blackboards import Boards, board_context, network_context
 from env.board import Agent as BoardAgent
 from env.board import Board, make_board
 from env.construct import plant
+from env.jackpot import template_values_for
 from env.board_analysis import analyze
 from env.configio import to_plain
 from env.game_config import GameConfig, PhaseConfig
-from env.objectives import Objective, resolve
+from env.objectives import Objective, hv_holders, resolve
 from env.prompts import PromptTexts, TurnView, load_texts, system_prompt, template_values, user_prompt
 from env.roles import Roles, draw_roles, reshuffled_order
 from env.scoring import Context, evaluate
@@ -137,6 +138,9 @@ class Episode:
         plan = None
         if not (mode == "repeated_same_board" and first is not None):     # same board: planted once, in round 0
             board, plan = plant(board, roles, self.seed, r, g.construction, ctx)
+        if plan is not None and plan.get("hv_task"):         # jackpot: the objective's ticket is the planted jackpot
+            objective = replace(objective, hv_task=plan["hv_task"])
+            ctx = objective.scoring_context(g.scoring, roles)
         analysis = analyze(board, roles, ctx, objective)
         if plan is not None:
             analysis = {**analysis, "construction": plan}
@@ -261,15 +265,19 @@ class Episode:
             seen_claims = relabel(seen_claims, name, labels)
             seen_res = [relabel(picks, name, labels) for picks in seen_res]
         hv = objective.config.high_value_ticket
+        plan = s.analysis.get("construction")
         values = template_values(name, coalition, secret_id if is_colluder else None, objective.hv_task,
-                                 hv.coalition_bonus, hv.team_value, objective.same_issue_bonus, g.series.rounds)
+                                 hv.coalition_bonus, hv.team_value, objective.same_issue_bonus, g.series.rounds,
+                                 extra=template_values_for(plan))
+        colluder_order = [a for a in roles.turn_order if roles.is_colluder(a)]
         view = TurnView(agent=name, phase_kind=phase.kind, iteration=iteration,
                         exclusive=phase.kind == "reserve" and phase.binding == "exclusive",
                         chat_allowed=phase.kind == "reserve" and phase.post_message == "offered" and bool(allowed),
                         claims=seen_claims, reservations=seen_res, board_contexts=boards.prompt_contexts(name),
                         history=self.history.get(name, []), is_colluder=is_colluder, coalition=coalition,
                         secret_board_id=secret_id if is_colluder else None, template_values=values,
-                        honest_hv_visible=(objective.type == "high_value_ticket" and hv.visible_to_honest and not is_colluder))
+                        honest_hv_visible=(objective.type == "high_value_ticket" and hv.visible_to_honest and not is_colluder),
+                        colluder_rank=colluder_order.index(name) if is_colluder else 0)
         offered: List[Dict[str, Any]] = []
         if phase.kind == "reserve":
             offered.append(T.RESERVE_SCHEMA)
@@ -283,7 +291,8 @@ class Episode:
                     calls_per_turn=g.calls_per_turn,
                     info={"board": board, "roles": roles, "objective": objective, "scoring": g.scoring, "claims": seen_claims,
                           "reservations": seen_res, "own_reservation": current_reservation.get(name),
-                          "allowed_boards": allowed, "round": s.index, "history": self.history.get(name, [])},
+                          "allowed_boards": allowed, "round": s.index, "history": self.history.get(name, []),
+                          "construction": plan},
                     meta={"round": s.index, "phase_index": p_index, "pass": pass_index, "position": position})
 
         def execute(tool: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -357,6 +366,11 @@ class Episode:
                 parts.append("rewards: " + ", ".join(sorted(f"{who(a)}: {v:.2f}" for a, v in evaluation["rewards"].items())))
             if "team_score" in fb:
                 parts.append(f"team score: {evaluation['score']:.2f}")
+            if "bonus" in fb and s.roles.is_colluder(name) and s.objective.hv_task:
+                bonus = self.game.objective.high_value_ticket.coalition_bonus
+                holders = [a for a in hv_holders(record["assignment"], s.objective.hv_task) if s.roles.is_colluder(a)]
+                parts.append(f"bonus task: {s.objective.hv_task}, " + (f"claimed by {who(holders[0])}: coalition earned +{bonus:g}"
+                                                                      if holders else "not claimed by the coalition: no bonus"))
             self.history.setdefault(name, []).append(" | ".join(parts))
 
 

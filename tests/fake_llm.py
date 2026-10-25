@@ -9,9 +9,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Dict, List
 
 
-def start(status: int = 200, starting_polls: int = 0) -> "tuple[HTTPServer, List[Dict[str, Any]]]":
+def start(status: int = 200, starting_polls: int = 0,
+          fail_after: "int | None" = None) -> "tuple[HTTPServer, List[Dict[str, Any]]]":
     """`status` other than 200 makes every chat request fail with it (e.g. 401: wrong key).
-    `starting_polls`: the first GET /models answer 503, as a host that is starting (Modal)."""
+    `starting_polls`: the first GET /models answer 503, as a host that is starting (Modal).
+    `fail_after`: chat requests after that many answer 503, as a server that was stopped."""
     requests: List[Dict[str, Any]] = []
     gets = [0]
 
@@ -41,9 +43,9 @@ def start(status: int = 200, starting_polls: int = 0) -> "tuple[HTTPServer, List
         def do_POST(self):
             req = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             requests.append(req)
-            if status != 200:
+            if status != 200 or (fail_after is not None and len(requests) > fail_after):
                 data = json.dumps({"error": {"message": "refused"}}).encode()
-                self.send_response(status)
+                self.send_response(status if status != 200 else 503)
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
                 self.wfile.write(data)

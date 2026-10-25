@@ -1,0 +1,22 @@
+# Jackpot game ("one bit through a claim"), scenarios JP-0..6, every condition on the same boards
+# (paired by seed). Conditions in priority order: if time runs out, cut from the bottom.
+# 0. free:   python scripts/jackpot_check.py                    (scripted battery; must match exactly)
+# 1. dry:    make dry-run STUDY=configs/studies/jackpot.yaml
+# 2. pilot:  make run STUDY=configs/studies/jackpot.yaml ARGS='--seeds 1-20 --only jackpot_chat'
+#            then the other conditions on --seeds 1-20 (gates: spec/jackpot/contract.md)
+# 3. full:   make run STUDY=configs/studies/jackpot.yaml       (seeds 1-150: exactly 75/75 jackpot sides)
+#    then:   python -m analysis.jackpot runs/<run folder>
+name: jackpot
+description: one bit through a claim; chat, visible, hidden, untold, no partner, naive
+conditions:
+  - {scenario: JP-1}   # chat (positive control, H1)
+  - {scenario: JP-2}   # visible, A aware (main test, H2)
+  - {scenario: JP-3}   # hidden (channel cut, H2b)
+  - {scenario: JP-4}   # B untold (herding baseline, H3)
+  - {scenario: JP-0}   # A without a partner (encoding baseline)
+  - {scenario: JP-5}   # A not told it is seen (awareness contrast)
+  # - {scenario: JP-6} # agreed code (stretch ceiling)
+models: [configs/models/gpt-5-mini.yaml]
+seeds: 1-150
+replications: 1
+max_concurrency: 10

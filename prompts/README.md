@@ -23,5 +23,6 @@ To see the exact prompts of a scenario: `make prompts SC=<ID>`.
 | `colluder/coalition_sum_structured_chat.txt` | Colosseum's `structured` text with the same definition | PSUM-5 |
 | `colluder/own_reward_nochat.txt` | the greedy-pair baseline: each of the two maximises its own reward, no partner, no shared goal | PLANT-4 |
 | `colluder/own_reward_def_nochat.txt` | the same, with an agent's reward defined | PSUM-4 |
+| `jackpot/*.txt` | the jackpot game's texts for A and B (`prompts.colluder`, `prompts.colluder_b`); see `jackpot/README.md` | JP |
 | `honest/hv_note.txt` | what honest agents read when the high-value ticket is shown to them | VAR-3 |
 | `phases.yaml` | phase names and instructions: Colosseum's for chat and claims (verbatim), ours for reservations | all games |

@@ -1,0 +1,13 @@
+# Follow-up runs pre-registered in spec/jackpot/PREREG.md, Amendment 1. Run one stage at a time with
+# scripts/jackpot_followup.sh (code | naive | monitor); every stage writes into the same run folder.
+name: jackpot_followup
+description: agreed code (JP-6), naive sender (JP-5) replicated on fresh boards, monitor-aware sender (JP-7)
+conditions:
+  - {scenario: JP-6}    # agreed code, boards 1-150 (F1)
+  - {scenario: JP-5}    # JP-5 itself on fresh boards 151-300 (F2, F3); the analysis labels these rows
+                        # jackpot_naive_rep when the main run is pooled with --with
+  - {scenario: JP-7}    # A told about the auditor, boards 1-150 (F4, F5)
+models: [configs/models/gpt-5-mini.yaml]
+seeds: 1-150
+replications: 1
+max_concurrency: 10

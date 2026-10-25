@@ -35,6 +35,12 @@ class FatalModelError(RuntimeError):
     """The endpoint refuses every request (key, access, model name or URL): stop using this model."""
 
 
+class ModelUnavailable(RuntimeError):
+    """A call still failed after every retry (server stopped, spending limit, outage) and the model's
+    `stop_on_error` is set: the episode stops, keeping its finished rounds, instead of letting the
+    environment fill the missing claim at random."""
+
+
 @dataclass(frozen=True)
 class ModelConfig:
     label: str = "gpt-4.1-mini"
@@ -55,6 +61,11 @@ class ModelConfig:
     price_input_per_1m: Optional[float] = None     # USD per million tokens, for cost estimates
     price_output_per_1m: Optional[float] = None
     policy: str = "greedy"                     # scripted agents only (agents/scripted.py)
+    api: str = "chat"                          # chat (POST /chat/completions) | responses (POST /responses, OpenAI)
+    stop_on_error: bool = False                # a call that fails after all retries stops the episode (finished
+                                               # rounds kept) instead of a random fill of the agent's claim
+    reasoning_summary: Optional[str] = None    # responses only: ask for the model's reasoning summary
+                                               # (auto | concise | detailed); logged as the message's "reasoning"
 
 
 class ChatClient:
@@ -104,29 +115,28 @@ class ChatClient:
     async def complete(self, messages: List[Dict[str, Any]], tools: List[Dict[str, Any]],
                        seed: Optional[int] = None) -> Dict[str, Any]:
         cfg = self.config
-        payload: Dict[str, Any] = {"model": cfg.model, "messages": messages}
-        if tools:
-            payload["tools"] = tools
-        if cfg.temperature is not None:
-            payload["temperature"] = cfg.temperature
-        if cfg.max_tokens is not None:
-            payload[cfg.max_tokens_field] = cfg.max_tokens
-        if seed is not None:
-            payload["seed"] = seed
-        payload.update(dict(cfg.extra_body))
+        if cfg.api == "responses":
+            payload, path = responses_payload(cfg, messages, tools), "/responses"
+        else:
+            payload, path = self._chat_payload(messages, tools, seed), "/chat/completions"
         delay = 2.0
         last_error = None
         for attempt in range(cfg.max_retries + 1):
             started = time.time()
             wait = None
             try:
-                response = await self.http.post("/chat/completions", json=payload)
+                response = await self.http.post(path, json=payload)
                 elapsed = time.time() - started
                 if response.status_code == 200:
                     try:
-                        return {"request": payload, "response": response.json(), "seconds": elapsed, "attempts": attempt + 1}
+                        body = response.json()
                     except ValueError:                  # a proxy or a crashed server answering 200 with non-JSON
                         last_error = f"HTTP 200 with a body that is not JSON: {response.text[:200]}"
+                    else:
+                        out = {"request": payload, "response": body, "seconds": elapsed, "attempts": attempt + 1}
+                        if cfg.api == "responses":      # the agent loop reads the chat shape; the raw answer is logged too
+                            out.update(response=responses_as_chat(body), raw_response=body)
+                        return out
                 else:
                     last_error = f"HTTP {response.status_code}: {response.text[:500]}"
                     if response.status_code in FATAL_STATUS:
@@ -142,6 +152,74 @@ class ChatClient:
                 await asyncio.sleep(pause)
                 delay *= 2
         return {"request": payload, "error": last_error, "attempts": attempt + 1}
+
+    def _chat_payload(self, messages: List[Dict[str, Any]], tools: List[Dict[str, Any]],
+                      seed: Optional[int]) -> Dict[str, Any]:
+        cfg = self.config
+        payload: Dict[str, Any] = {"model": cfg.model, "messages": messages}
+        if tools:
+            payload["tools"] = tools
+        if cfg.temperature is not None:
+            payload["temperature"] = cfg.temperature
+        if cfg.max_tokens is not None:
+            payload[cfg.max_tokens_field] = cfg.max_tokens
+        if seed is not None:
+            payload["seed"] = seed
+        payload.update(dict(cfg.extra_body))
+        return payload
+
+
+def responses_payload(cfg: ModelConfig, messages: List[Dict[str, Any]], tools: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """The same request for OpenAI's Responses API: chat messages become input items (an assistant's
+    tool calls become function_call items, tool results function_call_output items) and chat tools
+    become flat function tools. Stateless (store: false), like the chat calls: the reasoning items of
+    an earlier call in the same turn are not sent back."""
+    items: List[Dict[str, Any]] = []
+    for m in messages:
+        if m["role"] == "tool":
+            items.append({"type": "function_call_output", "call_id": m.get("tool_call_id"), "output": m.get("content") or ""})
+            continue
+        if m.get("content"):
+            items.append({"role": m["role"], "content": m["content"]})
+        for call in m.get("tool_calls") or []:
+            fn = call.get("function") or {}
+            items.append({"type": "function_call", "call_id": call.get("id"), "name": fn.get("name"),
+                          "arguments": fn.get("arguments") or "{}"})
+    payload: Dict[str, Any] = {"model": cfg.model, "input": items, "store": False}
+    if tools:
+        payload["tools"] = [{"type": "function", **t["function"]} if "function" in t else t for t in tools]
+    if cfg.temperature is not None:
+        payload["temperature"] = cfg.temperature
+    if cfg.max_tokens is not None:
+        payload["max_output_tokens"] = cfg.max_tokens
+    if cfg.reasoning_summary:
+        payload["reasoning"] = {"summary": cfg.reasoning_summary}
+    payload.update(dict(cfg.extra_body))
+    return payload
+
+
+def responses_as_chat(body: Dict[str, Any]) -> Dict[str, Any]:
+    """A Responses API answer in the chat-completions shape the agent loop reads: output text as content,
+    function_call items as tool_calls, reasoning summaries joined as message["reasoning"]."""
+    text, calls, summary = [], [], []
+    for item in body.get("output") or []:
+        if item.get("type") == "message":
+            text += [c.get("text", "") for c in item.get("content") or [] if c.get("type") == "output_text"]
+        elif item.get("type") == "function_call":
+            calls.append({"id": item.get("call_id"), "type": "function",
+                          "function": {"name": item.get("name"), "arguments": item.get("arguments") or "{}"}})
+        elif item.get("type") == "reasoning":
+            summary += [s.get("text", "") for s in item.get("summary") or []]
+    message: Dict[str, Any] = {"role": "assistant", "content": "\n".join(text) or None,
+                               "reasoning": "\n\n".join(summary) or None}
+    if calls:
+        message["tool_calls"] = calls
+    usage = body.get("usage") or {}
+    finish = "tool_calls" if calls else ("length" if body.get("status") == "incomplete" else "stop")
+    return {"choices": [{"message": message, "finish_reason": finish}],
+            "usage": {"prompt_tokens": usage.get("input_tokens", 0), "completion_tokens": usage.get("output_tokens", 0),
+                      "completion_tokens_details": {"reasoning_tokens":
+                                                    (usage.get("output_tokens_details") or {}).get("reasoning_tokens", 0)}}}
 
 
 def _retry_after(value: Optional[str]) -> Optional[float]:
@@ -187,6 +265,8 @@ class LLMAgent:
             self.log_call({"agent": self.name, **turn.meta, "kind": turn.kind, "step": step, "seed": seed, **out})
             if "error" in out:
                 error = out["error"]
+                if self.client.config.stop_on_error:
+                    raise ModelUnavailable(f"{self.name}: {error}")
                 break
             choice = (out["response"].get("choices") or [{}])[0]
             message = choice.get("message") or {}

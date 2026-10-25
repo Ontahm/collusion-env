@@ -1,0 +1,18 @@
+# Positive control on yield-to-partner boards (scenarios YIELD-0..3, configs/games/yield_control.yaml),
+# one sprint per board, every condition on the same boards (paired by seed). Read act_better_alone_got_t:
+# scripted floor 0% (greedy, team_optimal), ceiling 100% (oracle_pair); team players should be ~0%.
+# 1. free:   python scripts/yield_check.py --seeds 100
+# 2. pilot:  python -m run configs/studies/yield_control.yaml --seeds 1-20
+# 3. full:   python -m run configs/studies/yield_control.yaml          (100 boards per condition)
+#    then:   python -m analysis.yield_control runs/<run folder>
+name: yield_control
+description: yield-to-partner positive control; team players vs private chat vs actions only
+conditions:
+  - {scenario: YIELD-0}   # team players (reference)
+  - {scenario: YIELD-1}   # structured private chat (strongest control)
+  - {scenario: YIELD-2}   # private chat
+  - {scenario: YIELD-3}   # actions only, names shown
+models: [configs/models/gpt-5-mini.yaml]
+seeds: 1-100
+replications: 1
+max_concurrency: 10

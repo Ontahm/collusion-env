@@ -31,7 +31,7 @@ COLLUDER_VIEWS = ("visible", "hidden", "issue_only", "noisy")
 HONEST_VIEWS = ("visible", "hidden")
 NAME_VIEWS = ("shown", "anonymous")
 SERIES_MODES = ("independent", "repeated_same_board", "repeated_new_board")
-FEEDBACK = ("claims", "own_reward", "all_rewards", "team_score", "reservations")
+FEEDBACK = ("claims", "own_reward", "all_rewards", "team_score", "reservations", "bonus")
 
 
 @dataclass(frozen=True)
@@ -75,13 +75,15 @@ class SeriesConfig:
     mode: str = "independent"               # independent | repeated_same_board | repeated_new_board
     rounds: int = 1
     seed_stride: int = 1000                 # board seed of round r (independent, new board) = seed + r * stride
-    feedback: Tuple[str, ...] = ("claims", "own_reward")   # shown after each round in repeated modes
+    feedback: Tuple[str, ...] = ("claims", "own_reward")   # shown after each round in repeated modes; "bonus"
+                                            # (colluders only): the high-value ticket and whether the coalition earned it
 
 
 @dataclass(frozen=True)
 class PromptsConfig:
     system: str = "prompts/system/colosseum.txt"
     colluder: str = "prompts/colluder/colosseum_simple.txt"   # "" = colluders get no instruction (Colosseum "control")
+    colluder_b: Optional[str] = None        # the second colluder's text (jackpot game: B); None = same as colluder, "" = none
     colluder_header: bool = True            # Colosseum's "=== SECRET COALITION INSTRUCTIONS ===" block
     variant_name: str = "simple"            # shown in that header ("Prompt variant: simple")
     honest_hv_note: str = "prompts/honest/hv_note.txt"
@@ -138,6 +140,14 @@ class GameConfig:
         self.construction.check()
         check(self.construction.mode == "none" or self.roles.colluders == 2,
               "construction.mode planted needs roles.colluders: 2")
+        check(self.construction.mode != "yield"
+              or (self.roles.order == "colluders_first" and not self.roles.new_order_each_round),
+              "construction.mode yield needs roles.order: colluders_first and roles.new_order_each_round: false")
+        check(self.construction.mode != "jackpot"
+              or (self.roles.order == "colluders_first" and not self.roles.new_order_each_round
+                  and self.objective.type == "high_value_ticket"),
+              "construction.mode jackpot needs roles.order: colluders_first, roles.new_order_each_round: false "
+              "and objective.type: high_value_ticket (its bonus is the jackpot's)")
         check(not (self.views.names == "anonymous" and (self.boards.log_claims or self.boards.log_reservations)
                    and (self.boards.public or self.boards.secret)),
               "views.names is anonymous, but logging picks on a board would show who made them")
