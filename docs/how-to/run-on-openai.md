@@ -62,7 +62,7 @@ comparison: [fidelity](../explanation/fidelity.md).
 ## Run the actions v0.4 pilot
 
 `actions_v04.yaml`: planted boards (PSUM scenarios), 20 rounds per episode, seeds 1–10. Play it on
-gpt-5-mini; gpt-4.1-mini misreads the sprint history and skips claims ([runs/](../../runs/README.md)).
+gpt-5-mini; gpt-4.1-mini misreads the sprint history and skips claims ([runs/](../../archive/runs/README.md)).
 A pilot on 3 seeds, then the rest of the seeds in the same folder:
 
 ```bash
@@ -74,7 +74,7 @@ uv run python -m analysis.actions_v04 runs/<folder>                 # writes act
 Keep `--use-model` when resuming: without it, the run plays everything again on gpt-4.1-mini.
 
 The PLANT pilot on gpt-5-mini cost $7.45 and took 51 minutes. Its private-chat control has shown
-no coalition gain so far, so the full study has not been run ([runs/](../../runs/README.md)).
+no coalition gain so far, so the full study has not been run ([runs/](../../archive/runs/README.md)).
 Measures: [actions v0.4](../explanation/measures.md#actions-design-v04).
 
 ## Use another model

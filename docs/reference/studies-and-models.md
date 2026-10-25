@@ -26,7 +26,7 @@ Any study can be played on another model with `--use-model configs/models/<file>
 
 `configs/diagnostics/` holds ad-hoc studies: two on the skip rate (`skip_ablation.yaml`,
 `skip_ablation2.yaml`) and one with the public message board back in the PSUM game
-(`public_board.yaml`). They are not results: [runs/README.md](../../runs/README.md).
+(`public_board.yaml`). They are not results: [archive/runs/README.md](../../archive/runs/README.md).
 
 ### Local rehearsals
 

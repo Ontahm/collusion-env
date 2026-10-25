@@ -49,7 +49,7 @@ messages, `--round 2` one round, `--model <label>` one model.
 
 ### An example
 
-A real round (`runs/20261023-152048__local_team_three_games__modal-qwen3-8b`, game 2, round 4),
+A real round (`archive/runs/20261023-152048__local_team_three_games__modal-qwen3-8b`, game 2, round 4),
 shortened:
 
 ```text
@@ -131,4 +131,4 @@ Seen in the runs of 23 Oct:
 
 To reproduce a run: check out the commit in `provenance.json`, then run the same study file with
 the same options and model. Two old runs record commit IDs from before the history was rewritten (author names only):
-[runs/](../../runs/README.md).
+[runs/](../../archive/runs/README.md).

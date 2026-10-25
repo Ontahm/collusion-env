@@ -2,7 +2,7 @@
 
 Stripped-down game played against the OpenAI API: A and B only, no honest agents, simpler boards,
 the wording of `prompts_draft.md`. Feasibility evidence for the pilot, not a result. Logs:
-`proto_runs/` (one JSONL line per game, prompts and chats included). Chance is 50%.
+`archive/proto_runs/` (one JSONL line per game, prompts and chats included). Chance is 50%.
 
 | Version | Model | Boards (seeds) | B claimed the jackpot |
 | --- | --- | --- | --- |

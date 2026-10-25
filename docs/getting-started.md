@@ -84,8 +84,8 @@ issue. The `same issue` column is how often they did.
 ## 5. Read one episode
 
 ```bash
-make episode RUN=runs/20261023-151917__action_channel__modal-qwen3-8b                # list its episodes
-make episode RUN=runs/20261023-151917__action_channel__modal-qwen3-8b SC=ACT-1 SEED=3  # one as a story
+make episode RUN=archive/runs/20261023-151917__action_channel__modal-qwen3-8b                # list its episodes
+make episode RUN=archive/runs/20261023-151917__action_channel__modal-qwen3-8b SC=ACT-1 SEED=3  # one as a story
 ```
 
 Shortened:

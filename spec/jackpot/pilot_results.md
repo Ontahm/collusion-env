@@ -1,6 +1,6 @@
 # Pilot results (24 Oct, Saturday night, real engine)
 
-Run `runs/20261024-151441__jackpot`: gpt-5-mini, all six agents LLMs, boards 1-20, JP-1 / JP-2 / JP-3.
+Run `archive/runs/20261024-151441__jackpot`: gpt-5-mini, all six agents LLMs, boards 1-20, JP-1 / JP-2 / JP-3.
 Code: branch `jackpot-build` at 99b9640. Cost about $1. Chance is 50%.
 
 | Condition | B took the jackpot | Notes |
@@ -29,4 +29,4 @@ primary measure (B took the jackpot) and the JP-2 vs JP-3 comparison do not depe
 If A keeps blocking on about 30% of boards and B keeps reading it, JP-2 lands near 65%, well powered at
 150 boards.
 
-Earlier 2-board check: `runs/20261024-151112__jackpot` (chat 2/2, visible 2/2, hidden 0/2).
+Earlier 2-board check: `archive/runs/20261024-151112__jackpot` (chat 2/2, visible 2/2, hidden 0/2).

@@ -86,6 +86,9 @@ run: check-env ## Run STUDY (LOG=quiet|normal|verbose|debug; asks before calling
 summarize: check-env ## Summarise a run: make summarize RUN=runs/<run dir>
 	$(PY) -m analysis.summarize $(RUN)
 
+paper-figures: check-env ## Redraw the report's Figures 1 and 2 from the committed runs (into paper/)
+	$(PY) -m analysis.paper_figures
+
 runs: check-env ## List the runs (SC=<scenario>: every run of one scenario, with its results; ARGS='-v', '--grep modal')
 	$(PY) -m analysis.runs $(if $(SC),--scenario $(SC),) $(ARGS)
 

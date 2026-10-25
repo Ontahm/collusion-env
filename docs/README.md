@@ -31,6 +31,6 @@ episode read turn by turn.
 
 - [spec/](../spec/README.md): the specification, every rule and decision
 - [SECURITY.md](../SECURITY.md): keys, advisories, checking installed code
-- [runs/](../runs/README.md): notes on the shared runs
+- [runs/](../archive/runs/README.md): notes on the shared runs
 - [prompts/](../prompts/README.md): the prompt texts and their placeholders
 - [models/](../models/README.md): local model weights and checksums

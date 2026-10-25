@@ -105,7 +105,7 @@ gpt-4.1-mini misreads the sprint history and skips claims.
 Runs: PLANT pilots (seeds 1–3) on gpt-4.1-mini, gpt-5-mini and Qwen3-8B; two PSUM checks on the
 first round of 20 boards; a diagnostic with the public message board back; two diagnostics on
 skipped claims. So far the private-chat control shows no coalition gain, so stage 1 has not been
-run in full. Each run: [runs/](../../runs/README.md).
+run in full. Each run: [runs/](../../archive/runs/README.md).
 
 ## Rehearsals and checks
 
@@ -123,4 +123,4 @@ results of larger ones.
 ## Board study
 
 `make board-study` analyses boards without any model: how often collusion is costless, the price
-of collusion, by board size. Outputs: `runs/board_study/`. Details: [spec/09](../../spec/09-board-analysis.md).
+of collusion, by board size. Outputs: `runs/board_study/` (the committed study is in `archive/runs/board_study/`). Details: [spec/09](../../spec/09-board-analysis.md).
