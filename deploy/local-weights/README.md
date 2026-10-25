@@ -1,4 +1,4 @@
-# models/
+# deploy/local-weights/
 
 Local model weights for `make local-server`. The `.gguf` files are git-ignored; `make models`
 downloads them from pinned revisions and checks them against `SHA256SUMS`.

@@ -121,19 +121,27 @@ Each run writes a new folder in `runs/`; an interrupted run continues with `--re
 
 ## Repository layout
 
-| Path | Contents |
-|---|---|
-| `runs/` | the report's runs (above) |
-| `paper/` | Figures 1–2 (PNG, PDF); the game and conditions diagrams (SVG, with PNG copies for documents) |
-| `env/`, `agents/`, `run.py` | the game engine, the model client, the run loop |
-| `configs/` | games, scenarios, studies, models (the jackpot files are named `jackpot*`) |
-| `prompts/jackpot/` | what A and B read |
-| `analysis/` | `jackpot.py` (every test), `paper_figures.py` (the figures) |
-| `spec/jackpot/` | design, preregistration, build notes |
-| `scripts/` | the run scripts and the scripted check |
-| `tests/` | tests, including the jackpot engine |
-| `archive/` | earlier work not in the report, unchanged: other runs (Colosseum replication, actions v0.4, yield control, DeepSeek and repeated-game runs), notes, prototype runs |
-| `docs/`, `spec/` | full documentation of the environment and every design decision ([docs/README.md](docs/README.md)) |
+Every entry at the top level, grouped by what you would open it for:
+
+| Group | Path | Contents |
+|---|---|---|
+| **The report** | `paper/` | Figures 1–2 (PNG, PDF) and the two diagrams (SVG, PNG copies for documents) |
+| | `runs/` | the six runs the report uses ([table above](#where-the-results-are)) |
+| | `spec/` | `spec/jackpot/`: design, preregistration, build notes; the rest: the environment's full specification and [decisions](spec/decisions.md) |
+| **Code** | `env/` | the game engine; `env/jackpot.py` builds the jackpot boards |
+| | `agents/` | the model client (OpenAI-compatible APIs, Modal, local) and scripted agents |
+| | `analysis/` | `jackpot.py` (every test in the report), `paper_figures.py` (the figures), summaries and charts |
+| | `run.py`, `scenarios.py`, `metrics.py`, `outcomes.py`, `logs.py` | the run loop, the scenario catalogue, per-round measures, outcome labels, console and log output |
+| **Inputs** | `configs/` | games, scenarios, studies, models (the report's files are named `jackpot*`) |
+| | `prompts/` | the texts agents read; the report's are in `prompts/jackpot/` |
+| **Running it** | `Makefile` | every command: `make help` lists them |
+| | `scripts/` | the report's run scripts and the free scripted check |
+| | `deploy/` | the Modal server (`modal_vllm.py`), its model profiles, optional local weights |
+| | `tests/` | all tests (`make test`), including the jackpot engine |
+| **Documentation** | `docs/` | how the environment works and how to run it ([docs/README.md](docs/README.md)) |
+| | `SECURITY.md` | keys, the secret check, the advisories checked |
+| **Earlier work** | `archive/` | not in the report, unchanged: other runs (Colosseum replication, actions v0.4, yield control, DeepSeek and repeated-game runs), notes, prototype runs |
+| **Setup files** | `pyproject.toml`, `uv.lock`, `flake.nix`, `flake.lock`, `.env.example`, `.githooks/` | dependencies (uv; Nix optional), the template for your private `.env`, the git hook that blocks committed keys |
 
 Everything outside the jackpot files (other games, scenarios and studies) still runs; it is the
 environment's earlier work, documented in `docs/` and `spec/`.
@@ -173,7 +181,7 @@ Added during the sprint (from 23 October; `git log 6656e37..` lists every change
   repository public on 25 October 2026 for the sprint submission (decision Q-29) and will remove this
   material if Colosseum's authors ask.
 - Terrarium (`terrarium-agents`, MIT): the Jira environment and its system prompt.
-- Qwen3-4B (Apache-2.0) and its abliterated variant: the local models ([models/](models/README.md)).
+- Qwen3-4B (Apache-2.0) and its abliterated variant: the local models ([deploy/local-weights/](deploy/local-weights/README.md)).
 - names (MIT): agent names, as in Colosseum.
 - Built with AI assistance (Claude).
 

@@ -9,7 +9,7 @@ BOARD_STUDY ?= configs/board_study.yaml
 MODEL ?= configs/models/local-qwen3-4b.yaml
 
 # Local model server (scripts/serve.sh). The abliterated model: make local-server-abliterated.
-MODEL_FILE ?= models/Qwen3-4B-Q4_K_M.gguf
+MODEL_FILE ?= deploy/local-weights/Qwen3-4B-Q4_K_M.gguf
 ALIAS ?= qwen3-4b-q4km
 PORT ?= 8080
 CTX ?= 12288
@@ -57,13 +57,13 @@ smoke: check-env ## Free end-to-end run with scripted agents (configs/studies/sm
 	$(PY) -m run configs/studies/smoke_scripted.yaml $(LOG_ARG) $(ARGS)
 
 models: ## Download the local models (pinned revisions, 2.5 GB each) and check their SHA-256
-	@mkdir -p models
+	@mkdir -p deploy/local-weights
 	@for pair in "Qwen3-4B-Q4_K_M.gguf $(QWEN_URL)" "Qwen3-4B-abliterated-q4_k_m.gguf $(ABLIT_URL)"; do \
 	  set -- $$pair; \
-	  if [ ! -f "models/$$1" ]; then echo "downloading $$1"; \
-	    curl -L --fail --continue-at - -o "models/$$1.part" "$$2" && mv "models/$$1.part" "models/$$1"; fi; \
+	  if [ ! -f "deploy/local-weights/$$1" ]; then echo "downloading $$1"; \
+	    curl -L --fail --continue-at - -o "deploy/local-weights/$$1.part" "$$2" && mv "deploy/local-weights/$$1.part" "deploy/local-weights/$$1"; fi; \
 	done
-	cd models && sha256sum --check SHA256SUMS
+	cd deploy/local-weights && sha256sum --check SHA256SUMS
 
 local-server: ## Serve a local model on http://127.0.0.1:8080 (Ctrl+C stops). MODEL_FILE=, ALIAS=, PORT=, CTX=
 	@export MODEL_FILE="$(MODEL_FILE)" ALIAS="$(ALIAS)" PORT="$(PORT)" CTX="$(CTX)"; \
@@ -72,7 +72,7 @@ local-server: ## Serve a local model on http://127.0.0.1:8080 (Ctrl+C stops). MO
 	else echo "llama-server not found: install llama.cpp (docs/how-to/run-locally.md)"; exit 1; fi
 
 local-server-abliterated: ## Serve the abliterated Qwen3-4B (name qwen3-4b-ablit-q4km)
-	@$(MAKE) --no-print-directory local-server MODEL_FILE=models/Qwen3-4B-abliterated-q4_k_m.gguf ALIAS=qwen3-4b-ablit-q4km
+	@$(MAKE) --no-print-directory local-server MODEL_FILE=deploy/local-weights/Qwen3-4B-abliterated-q4_k_m.gguf ALIAS=qwen3-4b-ablit-q4km
 
 check-model: check-env ## Check a model endpoint answers with tool calls (MODEL=configs/models/<file>.yaml)
 	$(PY) -m agents.check $(MODEL)

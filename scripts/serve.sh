@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-MODEL_FILE="${MODEL_FILE:-models/Qwen3-4B-Q4_K_M.gguf}"
+MODEL_FILE="${MODEL_FILE:-deploy/local-weights/Qwen3-4B-Q4_K_M.gguf}"
 ALIAS="${ALIAS:-qwen3-4b-q4km}"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8080}"
@@ -21,8 +21,8 @@ if [[ "$HOST" != "127.0.0.1" && "$HOST" != "localhost" ]]; then
   exit 1
 fi
 
-model_sha=$(grep " $(basename "$MODEL_FILE")\$" models/SHA256SUMS | cut -d' ' -f1 || true)
-[[ -n "$model_sha" ]] || { echo "$(basename "$MODEL_FILE") is not listed in models/SHA256SUMS." >&2; exit 1; }
+model_sha=$(grep " $(basename "$MODEL_FILE")\$" deploy/local-weights/SHA256SUMS | cut -d' ' -f1 || true)
+[[ -n "$model_sha" ]] || { echo "$(basename "$MODEL_FILE") is not listed in deploy/local-weights/SHA256SUMS." >&2; exit 1; }
 echo "Checking the model's checksum..."
 (cd models && echo "$model_sha  $(basename "$MODEL_FILE")" | sha256sum --check --quiet)
 

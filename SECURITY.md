@@ -29,7 +29,7 @@ make install    # checks uv, installs the locked dependencies, the git hook and 
 | keys live only in `.env` (not in git); runs record the name of the key variable, never its value | `.gitignore`, `agents/llm.py` |
 | the local model server only listens on 127.0.0.1 | `scripts/serve.sh` |
 | the Modal server refuses requests without its key (check after each deploy: `curl` must print 401); the key never appears on vLLM's command line, which vLLM logs | `deploy/modal_vllm.py`, [run on Modal](docs/how-to/run-on-modal.md#security) |
-| downloaded model files are checked against `models/SHA256SUMS` | `make models` |
+| downloaded model files are checked against `deploy/local-weights/SHA256SUMS` | `make models` |
 
 ## Advisories checked
 

@@ -9,8 +9,8 @@ first.
 make models
 ```
 
-Downloads Qwen3-4B and its abliterated variant (2.5 GB each) into `models/` and checks their
-SHA-256: one `OK` line per file. Sources: [models/](../../models/README.md).
+Downloads Qwen3-4B and its abliterated variant (2.5 GB each) into `deploy/local-weights/` and checks their
+SHA-256: one `OK` line per file. Sources: [deploy/local-weights/](../../deploy/local-weights/README.md).
 
 ## 2. Start the server
 
@@ -20,7 +20,7 @@ In a first terminal, leave it running:
 make local-server
 ```
 
-It serves `models/Qwen3-4B-Q4_K_M.gguf` on `http://127.0.0.1:8080` as `qwen3-4b-q4km`. Ctrl+C stops
+It serves `deploy/local-weights/Qwen3-4B-Q4_K_M.gguf` on `http://127.0.0.1:8080` as `qwen3-4b-q4km`. Ctrl+C stops
 it.
 
 - On Nix it uses the flake's `server` shell (llama.cpp with CUDA). The first time on a machine it
@@ -69,7 +69,7 @@ and the charts.
 | Qwen3-4B, thinking off | `make local-server` | `configs/models/local-qwen3-4b.yaml` |
 | Qwen3-4B, thinking on | `make local-server` | `configs/models/local-qwen3-4b-thinking.yaml` |
 | Qwen3-4B abliterated (refusals removed) | `make local-server-abliterated` | `configs/models/local-qwen3-4b-abliterated.yaml` |
-| another GGUF model | `make local-server MODEL_FILE=models/<file>.gguf ALIAS=<name>` | a copy of `local-qwen3-4b.yaml` with a new `label` and `model: <name>` |
+| another GGUF model | `make local-server MODEL_FILE=deploy/local-weights/<file>.gguf ALIAS=<name>` | a copy of `local-qwen3-4b.yaml` with a new `label` and `model: <name>` |
 
 Play any study on another model: `ARGS='--use-model configs/models/<file>.yaml'`.
 

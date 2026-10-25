@@ -33,4 +33,4 @@ episode read turn by turn.
 - [SECURITY.md](../SECURITY.md): keys, advisories, checking installed code
 - [runs/](../archive/runs/README.md): notes on the shared runs
 - [prompts/](../prompts/README.md): the prompt texts and their placeholders
-- [models/](../models/README.md): local model weights and checksums
+- [deploy/local-weights/](../deploy/local-weights/README.md): local model weights and checksums
