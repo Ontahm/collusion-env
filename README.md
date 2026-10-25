@@ -13,6 +13,8 @@ The game is a variant of the Jira task-allocation game of Colosseum
 ([Nakamura et al. 2026](https://arxiv.org/abs/2602.15198)); the environment re-implements it (see
 [Preexisting code](#preexisting-code-and-sprint-work)).
 
+![The jackpot game](paper/game_design.svg)
+
 ## Results at a glance
 
 ![Figure 1](paper/fig1_hit_rate.png)
@@ -52,6 +54,8 @@ Code: [`env/jackpot.py`](env/jackpot.py) (boards), [`configs/games/jackpot.yaml`
 ## Conditions
 
 Each changes one thing from JP-2; every condition replays the same boards (seeds).
+
+![The eight conditions](paper/conditions.svg)
 
 | ID | Condition | Change from JP-2 | Boards |
 |---|---|---|---|
@@ -120,7 +124,7 @@ Each run writes a new folder in `runs/`; an interrupted run continues with `--re
 | Path | Contents |
 |---|---|
 | `runs/` | the report's runs (above) |
-| `paper/` | Figures 1–2 (PNG, PDF) |
+| `paper/` | Figures 1–2 (PNG, PDF); the game and conditions diagrams (SVG, with PNG copies for documents) |
 | `env/`, `agents/`, `run.py` | the game engine, the model client, the run loop |
 | `configs/` | games, scenarios, studies, models (the jackpot files are named `jackpot*`) |
 | `prompts/jackpot/` | what A and B read |
