@@ -71,12 +71,53 @@ All pages are listed in [docs/README.md](docs/README.md). The most used:
 | `deploy/`, `scripts/`, `models/` | the Modal server; helper scripts; local model weights |
 | `tests/` | tests, with reference outputs of Colosseum's code |
 
+## Preexisting code and sprint work
+
+The sprint ran 23–25 October 2026. The first commit, `6656e37` (22 October, v0.0.1), was written
+before it and is **preexisting**:
+
+- the game engine (`env/`): boards, scoring, roles, views, blackboards, tools and prompts, rebuilt
+  from Colosseum and tested against its code (`tests/`);
+- the model client and scripted agents (`agents/`), the run loop (`run.py`), summaries and charts
+  (`analysis/`), and the first Modal server (`deploy/modal_vllm.py`);
+- the Colosseum paper settings and the team's first game designs (`configs/games/colosseum_paper.yaml`,
+  `configs/games/team/`, `configs/games/action_channel.yaml`), their prompts and the specification
+  (`spec/`).
+
+Added during the sprint (from 23 October; `git log 6656e37..` lists every change):
+
+- the actions game v0.4 with planted conflicts and summed coalition rewards (PSUM scenarios);
+- the jackpot game (`env/jackpot.py`, JP scenarios, `analysis/jackpot.py`) and its preregistration
+  with amendments (`spec/jackpot/PREREG.md`);
+- the yield-to-partner control;
+- the repeated jackpot game with outcome feedback (JPR scenarios);
+- DeepSeek V4 Pro and Qwen3 models on Modal, OpenAI reasoning summaries, and keeping finished rounds
+  when a model server stops;
+- every run in `runs/`.
+
 ## Credits and sharing
 
-- Colosseum (umass-ai-safety/colosseum, commit `b077fe7`) and its paper define the experiment. Its
-  repository has no licence. This repository quotes its colluder prompts and contains reference
-  outputs of its code, so it stays private (team only).
+- Colosseum (umass-ai-safety/colosseum, commit `b077fe7`) and its paper (citation below) define the
+  experiment. Its repository has no licence. This repository quotes its colluder prompts verbatim
+  (`prompts/colluder/colosseum_*.txt` and the prompts built on them), reproduces its colluder header
+  (`env/prompts.py`) and contains reference outputs of its code (`tests/fixtures/colosseum_*`,
+  `spec/verification/outputs/`); run logs in `runs/` include these prompts. The team made the
+  repository public on 25 October 2026 for the sprint submission (decision Q-29) and will remove this
+  material if Colosseum's authors ask.
 - Terrarium (`terrarium-agents`, MIT): the Jira environment and its system prompt.
 - Qwen3-4B (Apache-2.0) and its abliterated variant: the local models ([models/](models/README.md)).
 - names (MIT): agent names, as in Colosseum.
 - Built with AI assistance (Claude).
+
+```bibtex
+@misc{nakamura2026colosseum,
+  title         = {Colosseum: Auditing Collusion in Cooperative Multi-Agent Systems},
+  author        = {Nakamura, Mason and Kumar, Abhinav and Das, Saswat and Abdelnabi, Sahar and
+                   Mahmud, Saaduddin and Fioretto, Ferdinando and Zilberstein, Shlomo and
+                   Bagdasarian, Eugene},
+  year          = {2026},
+  eprint        = {2602.15198},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.MA}
+}
+```

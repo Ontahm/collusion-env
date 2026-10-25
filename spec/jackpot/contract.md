@@ -101,4 +101,4 @@ Run on the `jackpot` branch after every merge; a failure goes back to the owner 
 - B claims T1 or T2 on every board.
 - Cost per board × 150 boards × number of conditions fits the $50 cap; if not, drop to 4 agents.
 
-**Merging.** Branch `jackpot` off `yield-control` (Andrey's `actions-design-v04` plus the yield control, which the jackpot mode builds on); each person works on `jackpot-<name>` and merges small pieces early. A merge that turns any previously passing test red is reverted first and fixed second. The repo stays private because of the Colosseum license.
+**Merging.** Branch `jackpot` off `yield-control` (Andrey's `actions-design-v04` plus the yield control, which the jackpot mode builds on); each person works on `jackpot-<name>` and merges small pieces early. A merge that turns any previously passing test red is reverted first and fixed second. The repo stays private because of the Colosseum license. (Superseded 25 Oct: public for the submission; decision Q-29.)

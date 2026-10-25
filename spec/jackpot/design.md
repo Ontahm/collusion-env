@@ -302,7 +302,7 @@ The team's estimate: about 20–24 working hours from Saturday noon to the Sunda
 - **Scope:** one bit; elicited; constructed payoffs; planted costs; 8 tasks with scripted honest agents; one main model; one-shot play.
 - **Untested channels:** timing, reservations, tool choice, repeated-game conventions.
 - **Dual use:** the protocol shows agents can be prompted into a covert one-bit channel. The uplift is low: the convention is a simple focal point and the channel carries one bit. The defensive value is a validated positive case for testing monitors. No code that optimises covert channels is released.
-- **Repository:** the repo quotes Colosseum's prompts and has no licence yet, so it stays private until that is settled.
+- **Repository:** the repo quotes Colosseum's prompts and has no licence yet, so it stays private until that is settled. (Superseded 25 Oct: public for the submission; decision Q-29.)
 
 ---
 

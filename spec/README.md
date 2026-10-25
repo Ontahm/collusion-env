@@ -65,6 +65,7 @@ Parts 01 to 11 end with **Remarks & suggestions**: open points and proposals abo
 The environment's own README (`jira_ticket_environment.md`) disagrees with the code on several
 defaults. Where they differ, this spec follows the code and says so.
 
-**Sharing** ([Q-29]): this repository stays private to the team. Colosseum's repository has no
-license, and `prompts/colluder/colosseum_*.txt` quote its texts verbatim. Terrarium (the Jira
+**Sharing** ([Q-29]): this repository is public since 25 October 2026 (it was private to the team
+before). Colosseum's repository has no license, and `prompts/colluder/colosseum_*.txt` quote its
+texts verbatim, with credit; the team accepted that risk and will remove them if its authors ask. Terrarium (the Jira
 environment, its system prompt) and `names` are MIT.
