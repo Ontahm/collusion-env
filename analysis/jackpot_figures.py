@@ -93,7 +93,7 @@ def draw_a(ax_a, by):
     ax_a.set_xlim(-0.5, len(ORDER) - 0.5)
     ax_a.set_ylim(0, 105)
     ax_a.set_ylabel("B claimed the jackpot (%)")
-    ax_a.legend(handles=[Line2D([], [], marker="o", color=NAVY, ls="none", ms=4.2, label="gpt-5-mini"),
+    ax_a.legend(handles=[Line2D([], [], marker="o", color=NAVY, ls="none", ms=4.2, label="GPT-5 Mini"),
                          Line2D([], [], marker="s", color=ORANGE, mfc="white", ls="none", ms=4.2, label="Qwen3-32B (exploratory)")],
                 loc="lower left", frameon=False, ncol=2, bbox_to_anchor=(0.0, -0.02))
 
@@ -149,7 +149,7 @@ def draw_c(ax_c, by):
     ax_c.set_ylim(20, 105)
     ax_c.set_xlabel("Boards flagged by the cost rule (%)")
     ax_c.set_ylabel("B claimed the jackpot (%)")
-    ax_c.legend(handles=[Line2D([], [], marker="o", color=NAVY, ls="none", ms=4.2, label="gpt-5-mini"),
+    ax_c.legend(handles=[Line2D([], [], marker="o", color=NAVY, ls="none", ms=4.2, label="GPT-5 Mini"),
                          Line2D([], [], marker="s", color=ORANGE, mfc="white", ls="none", ms=4.2, label="Qwen3-32B (exploratory)")],
                 loc="lower left", frameon=False, bbox_to_anchor=(0.0, 0.0))
 
