@@ -1,14 +1,15 @@
-"""Figures 1 and 2 of the paper "Read My Claim" (jackpot game, challenge 3.1).
+"""Figures 1, 2 and B1 of the paper "Say Nothing" (jackpot game, challenge 3.1).
 
 Usage (from the repo folder):
     uv run --locked python -m analysis.jackpot_figures
 
 Reads index.csv from the five run folders the paper uses (SOURCES below) and writes, in paper/figures/:
-  jackpot_figure1.png/.pdf   (a) how often B claimed the jackpot, by condition and model, 95% Wilson
-                             intervals; (b) gpt-5-mini only, boards where A blocked vs all other boards
+  jackpot_figure1.png/.pdf   how often B claimed the jackpot, by condition and model, 95% Wilson intervals
   jackpot_figure2.png/.pdf   each condition's hit rate against the share of its boards flagged by the
                              cost rule
-PNGs are 300 dpi. Figure 1 is 7 x 4.6 inches, Figure 2 is 4.6 x 3 inches.
+  jackpot_figureB1.png/.pdf  (appendix) gpt-5-mini only, boards where A blocked vs all other boards
+PNGs are 300 dpi. Figures 1 and B1 are 7 x 2.6 inches, Figure 2 is 4.6 x 3 inches. Captions carry the
+titles, so the figures have none.
 
 Definitions come from analysis/jackpot.py, so the figures match the reports: B right = jk_b_correct;
 block = A took the decoy; flagged = analysis.jackpot.is_flagged (A claimed anything other than A1 or A2).
@@ -92,7 +93,6 @@ def draw_a(ax_a, by):
     ax_a.set_xlim(-0.5, len(ORDER) - 0.5)
     ax_a.set_ylim(0, 105)
     ax_a.set_ylabel("B claimed the jackpot (%)")
-    ax_a.set_title("(a) Hit rate by condition", loc="left")
     ax_a.legend(handles=[Line2D([], [], marker="o", color=NAVY, ls="none", ms=4.2, label="gpt-5-mini"),
                          Line2D([], [], marker="s", color=ORANGE, mfc="white", ls="none", ms=4.2, label="Qwen3-32B (exploratory)")],
                 loc="lower left", frameon=False, ncol=2, bbox_to_anchor=(0.0, -0.02))
@@ -113,13 +113,12 @@ def draw_b(ax_b, by):
     ax_b.axhline(50, color=GREY, lw=0.7, ls="--", zorder=0)
     ax_b.set_xticks(range(len(split)), [o[1] for o in split])
     ax_b.set_xlim(-0.55, len(split) - 0.45)
-    ax_b.set_ylim(-8, 118)
+    ax_b.set_ylim(-8, 124)
     ax_b.set_yticks(range(0, 101, 25))
     ax_b.set_ylabel("B claimed the jackpot (%)")
-    ax_b.set_title("(b) gpt-5-mini: boards where A blocked vs all other boards", loc="left")
     ax_b.legend(handles=[Line2D([], [], marker="D", color=PURPLE, ls="none", ms=3.6, label="A blocked (took the decoy)"),
                          Line2D([], [], marker="o", color=GREEN, ls="none", ms=3.8, label="all other boards")],
-                loc="upper right", frameon=False, bbox_to_anchor=(1.0, 1.13), ncol=2, columnspacing=0.8, handletextpad=0.3)
+                loc="upper center", frameon=False, bbox_to_anchor=(0.5, 1.04), ncol=2, columnspacing=1.2, handletextpad=0.3)
 
 
 def draw_c(ax_c, by):
@@ -160,13 +159,11 @@ def main():
     plt.rcParams.update({"font.size": 7, "axes.titlesize": 7.5, "axes.labelsize": 7,
                          "xtick.labelsize": 6, "ytick.labelsize": 6.5, "legend.fontsize": 6,
                          "axes.spines.top": False, "axes.spines.right": False})
-    # Figure 1: hit rate by condition (a) and the block split (b), stacked
-    fig = plt.figure(figsize=(7, 4.6))
-    gs = fig.add_gridspec(2, 1, height_ratios=[1, 1], hspace=0.55)
-    draw_a(fig.add_subplot(gs[0]), by)
-    draw_b(fig.add_subplot(gs[1]), by)
-    fig.subplots_adjust(left=0.075, right=0.985, top=0.95, bottom=0.075)
     OUT.mkdir(parents=True, exist_ok=True)
+    # Figure 1: hit rate by condition, both models
+    fig, ax = plt.subplots(figsize=(7, 2.6))
+    draw_a(ax, by)
+    fig.subplots_adjust(left=0.075, right=0.985, top=0.97, bottom=0.17)
     fig.savefig(OUT / "jackpot_figure1.png", dpi=300)
     fig.savefig(OUT / "jackpot_figure1.pdf")
     # Figure 2: hit rate against boards flagged by the cost rule
@@ -175,7 +172,13 @@ def main():
     fig2.subplots_adjust(left=0.12, right=0.97, top=0.97, bottom=0.14)
     fig2.savefig(OUT / "jackpot_figure2.png", dpi=300)
     fig2.savefig(OUT / "jackpot_figure2.pdf")
-    print("wrote jackpot_figure1 and jackpot_figure2 (.png, .pdf) in", OUT.relative_to(ROOT))
+    # Figure B1 (appendix): gpt-5-mini, boards where A blocked vs all other boards
+    fig3, ax = plt.subplots(figsize=(7, 2.6))
+    draw_b(ax, by)
+    fig3.subplots_adjust(left=0.075, right=0.985, top=0.97, bottom=0.17)
+    fig3.savefig(OUT / "jackpot_figureB1.png", dpi=300)
+    fig3.savefig(OUT / "jackpot_figureB1.pdf")
+    print("wrote jackpot_figure1, jackpot_figure2 and jackpot_figureB1 (.png, .pdf) in", OUT.relative_to(ROOT))
 
 
 if __name__ == "__main__":
